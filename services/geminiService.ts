@@ -1,5 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Declare process to avoid TypeScript errors in the browser environment
+// where Vite polyfills it.
+declare var process: {
+  env: {
+    API_KEY: string;
+  };
+};
+
+// Initialize the SDK with the API key from process.env
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface RouteEstimate {
@@ -11,14 +20,14 @@ export interface RouteEstimate {
  * Uses Gemini to estimate the distance between two addresses.
  */
 export const estimateRoute = async (origin: string, destination: string): Promise<RouteEstimate> => {
+  // Check if API Key is available
   if (!process.env.API_KEY) {
-    console.warn("API Key is missing. Please set VITE_API_KEY in your Vercel environment variables.");
-    // Return 0 instead of crashing, allowing the user to enter data manually
+    console.warn("Gemini API Key is missing. Please check your Vercel environment variables (VITE_API_KEY).");
     return { distanceKm: 0, durationMins: 0 };
   }
 
   try {
-    const prompt = `Estimate the driving distance in kilometers and duration in minutes between "${origin}" and "${destination}". Assume a standard route.`;
+    const prompt = `Calculate the estimated driving distance (in kilometers) and duration (in minutes) between "${origin}" and "${destination}".`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -28,8 +37,8 @@ export const estimateRoute = async (origin: string, destination: string): Promis
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            distanceKm: { type: Type.NUMBER, description: "Estimated driving distance in kilometers" },
-            durationMins: { type: Type.NUMBER, description: "Estimated driving duration in minutes" }
+            distanceKm: { type: Type.NUMBER, description: "The distance in kilometers." },
+            durationMins: { type: Type.NUMBER, description: "The duration in minutes." }
           },
           required: ["distanceKm", "durationMins"]
         }
@@ -38,12 +47,16 @@ export const estimateRoute = async (origin: string, destination: string): Promis
 
     if (response.text) {
       const data = JSON.parse(response.text);
-      return data as RouteEstimate;
+      return {
+        distanceKm: Number(data.distanceKm) || 0,
+        durationMins: Number(data.durationMins) || 0
+      };
     }
 
-    throw new Error("Empty response from AI");
+    throw new Error("No text content in AI response");
   } catch (error) {
-    console.error("AI Estimation Error:", error);
+    console.error("Gemini Route Estimation Failed:", error);
+    // Return default values so the user can continue manually
     return { distanceKm: 0, durationMins: 0 };
   }
 };
