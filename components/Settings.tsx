@@ -1,6 +1,6 @@
 import React from 'react';
 import { VehicleRate } from '../types';
-import { Card, Input, Button, Icons } from './Components';
+import { Card, Input, Icons } from './Components';
 
 interface SettingsProps {
     rates: VehicleRate[];
