@@ -15,6 +15,11 @@ export interface RouteEstimate {
  * Here we use Gemini's knowledge base to estimate reasonable distances.
  */
 export const estimateRoute = async (origin: string, destination: string): Promise<RouteEstimate> => {
+  if (!process.env.API_KEY) {
+    console.warn("API Key is missing. Please set API_KEY in your environment variables.");
+    return { distanceKm: 0, durationMins: 0 };
+  }
+
   try {
     const prompt = `Estimate the driving distance in kilometers and duration in minutes between "${origin}" and "${destination}". Assume a standard route.`;
 
