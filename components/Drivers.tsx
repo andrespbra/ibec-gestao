@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Driver } from '../types';
 import { Card, VehicleBadge, Icons, Button } from './Components';
@@ -5,9 +6,10 @@ import { Card, VehicleBadge, Icons, Button } from './Components';
 interface DriversProps {
   drivers: Driver[];
   onNewDriver: () => void;
+  onEditDriver: (driver: Driver) => void;
 }
 
-export const Drivers: React.FC<DriversProps> = ({ drivers, onNewDriver }) => {
+export const Drivers: React.FC<DriversProps> = ({ drivers, onNewDriver, onEditDriver }) => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -33,13 +35,14 @@ export const Drivers: React.FC<DriversProps> = ({ drivers, onNewDriver }) => {
                         <th className="px-6 py-3">Contato</th>
                         <th className="px-6 py-3">Endereço</th>
                         <th className="px-6 py-3">Veículo</th>
-                        <th className="px-6 py-3 text-right">Cadastrado em</th>
+                        <th className="px-6 py-3">Cadastrado em</th>
+                        <th className="px-6 py-3 text-right">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {drivers.length === 0 ? (
                         <tr>
-                            <td colSpan={5} className="px-6 py-10 text-center text-gray-400">
+                            <td colSpan={6} className="px-6 py-10 text-center text-gray-400">
                                 Nenhum motorista cadastrado.
                             </td>
                         </tr>
@@ -59,8 +62,17 @@ export const Drivers: React.FC<DriversProps> = ({ drivers, onNewDriver }) => {
                                 <td className="px-6 py-4">
                                     <VehicleBadge type={driver.vehicleType} />
                                 </td>
-                                <td className="px-6 py-4 text-right text-xs text-gray-400">
+                                <td className="px-6 py-4 text-xs text-gray-400">
                                     {new Date(driver.createdAt).toLocaleDateString('pt-BR')}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button 
+                                      onClick={() => onEditDriver(driver)}
+                                      className="text-gray-500 hover:text-primary transition-colors p-1"
+                                      title="Editar"
+                                    >
+                                      <Icons.Edit />
+                                    </button>
                                 </td>
                             </tr>
                         ))

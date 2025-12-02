@@ -1,14 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Client } from '../types';
 import { Button, Input, Card } from './Components';
 
 interface NewClientProps {
+  initialData?: Client;
   onSubmit: (client: Omit<Client, 'id' | 'createdAt'>) => void;
   onCancel: () => void;
 }
 
-export const NewClient: React.FC<NewClientProps> = ({ onSubmit, onCancel }) => {
+export const NewClient: React.FC<NewClientProps> = ({ initialData, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
@@ -19,6 +20,21 @@ export const NewClient: React.FC<NewClientProps> = ({ onSubmit, onCancel }) => {
     contactEmail: '',
     paymentDay: 10
   });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name,
+        cnpj: initialData.cnpj,
+        address: initialData.address,
+        costCenter: initialData.costCenter,
+        contactName: initialData.contactName,
+        contactPhone: initialData.contactPhone,
+        contactEmail: initialData.contactEmail,
+        paymentDay: initialData.paymentDay
+      });
+    }
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +47,9 @@ export const NewClient: React.FC<NewClientProps> = ({ onSubmit, onCancel }) => {
             <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
                 &larr; Voltar
             </button>
-            <h2 className="text-2xl font-bold text-gray-800">Cadastrar Novo Cliente</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              {initialData ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}
+            </h2>
         </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -118,7 +136,9 @@ export const NewClient: React.FC<NewClientProps> = ({ onSubmit, onCancel }) => {
 
         <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-            <Button type="submit">Cadastrar Cliente</Button>
+            <Button type="submit">
+              {initialData ? 'Salvar Alterações' : 'Cadastrar Cliente'}
+            </Button>
         </div>
       </form>
     </div>

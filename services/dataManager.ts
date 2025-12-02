@@ -1,3 +1,4 @@
+
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { TransportRequest, Driver, Client, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus } from '../types';
 
@@ -87,8 +88,16 @@ export const DataManager = {
     await this.add('drivers', STORAGE_KEYS.DRIVERS, item);
   },
 
+  async updateDriver(item: Driver) {
+    await this.update('drivers', STORAGE_KEYS.DRIVERS, item);
+  },
+
   async addClient(item: Client) {
     await this.add('clients', STORAGE_KEYS.CLIENTS, item);
+  },
+
+  async updateClient(item: Client) {
+    await this.update('clients', STORAGE_KEYS.CLIENTS, item);
   },
 
   async addExpense(item: DriverExpense) {

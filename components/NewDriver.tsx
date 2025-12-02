@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Driver, VehicleType, VehicleRate } from '../types';
 import { Button, Input, Card } from './Components';
 
 interface NewDriverProps {
   rates: VehicleRate[];
+  initialData?: Driver;
   onSubmit: (driver: Omit<Driver, 'id' | 'createdAt'>) => void;
   onCancel: () => void;
 }
 
-export const NewDriver: React.FC<NewDriverProps> = ({ rates, onSubmit, onCancel }) => {
+export const NewDriver: React.FC<NewDriverProps> = ({ rates, initialData, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     cpf: '',
@@ -16,6 +18,18 @@ export const NewDriver: React.FC<NewDriverProps> = ({ rates, onSubmit, onCancel 
     phone: '',
     vehicleType: 'MOTO' as VehicleType,
   });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name,
+        cpf: initialData.cpf,
+        address: initialData.address,
+        phone: initialData.phone,
+        vehicleType: initialData.vehicleType
+      });
+    }
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +42,9 @@ export const NewDriver: React.FC<NewDriverProps> = ({ rates, onSubmit, onCancel 
             <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
                 &larr; Voltar
             </button>
-            <h2 className="text-2xl font-bold text-gray-800">Cadastrar Novo Motorista</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              {initialData ? 'Editar Motorista' : 'Cadastrar Novo Motorista'}
+            </h2>
         </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -93,7 +109,9 @@ export const NewDriver: React.FC<NewDriverProps> = ({ rates, onSubmit, onCancel 
 
         <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-            <Button type="submit">Cadastrar Motorista</Button>
+            <Button type="submit">
+              {initialData ? 'Salvar Alterações' : 'Cadastrar Motorista'}
+            </Button>
         </div>
       </form>
     </div>
