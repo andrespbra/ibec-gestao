@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { INITIAL_RATES, TransportRequest, VehicleRate, RequestStatus, Driver, Client, DriverExpense } from './types';
 import { Dashboard } from './components/Dashboard';
 import { NewRequest } from './components/NewRequest';
@@ -14,15 +14,38 @@ import { Icons } from './components/Components';
 
 type ViewState = 'DASHBOARD' | 'NEW_REQUEST' | 'SETTINGS' | 'DRIVERS' | 'NEW_DRIVER' | 'CLIENTS' | 'NEW_CLIENT' | 'PAYROLL' | 'REPORTS';
 
+// Custom hook for LocalStorage persistence
+function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const stickyValue = window.localStorage.getItem(key);
+      return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
+    } catch (error) {
+      console.error(`Error loading state for key ${key}:`, error);
+      return defaultValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Error saving state for key ${key}:`, error);
+    }
+  }, [key, value]);
+
+  return [value, setValue];
+}
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
-  const [rates, setRates] = useState<VehicleRate[]>(INITIAL_RATES);
   
-  // Data - Initialized as empty for fresh system usage
-  const [requests, setRequests] = useState<TransportRequest[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [expenses, setExpenses] = useState<DriverExpense[]>([]);
+  // Data State with Persistence
+  const [rates, setRates] = useStickyState<VehicleRate[]>(INITIAL_RATES, 'logitrack_rates');
+  const [requests, setRequests] = useStickyState<TransportRequest[]>([], 'logitrack_requests');
+  const [drivers, setDrivers] = useStickyState<Driver[]>([], 'logitrack_drivers');
+  const [clients, setClients] = useStickyState<Client[]>([], 'logitrack_clients');
+  const [expenses, setExpenses] = useStickyState<DriverExpense[]>([], 'logitrack_expenses');
 
   const handleCreateRequest = (data: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => {
     const newRequest: TransportRequest = {
@@ -126,7 +149,7 @@ const App: React.FC = () => {
             </button>
         </nav>
         <div className="p-4 border-t border-gray-100 text-xs text-gray-400">
-            v1.5.0 Stable
+            v1.5.1 Persistent
         </div>
       </aside>
 
