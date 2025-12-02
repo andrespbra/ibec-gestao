@@ -61,6 +61,16 @@ export const Drivers: React.FC<DriversProps> = ({ drivers, onNewDriver, onEditDr
                                 </td>
                                 <td className="px-6 py-4">
                                     <VehicleBadge type={driver.vehicleType} />
+                                    {(driver.model || driver.plate) && (
+                                        <div className="mt-1 text-xs text-gray-600">
+                                            {driver.model && <span>{driver.model} {driver.color ? `- ${driver.color}` : ''}</span>}
+                                            {driver.plate && (
+                                                <div className="font-mono bg-gray-100 inline-block px-1 rounded mt-0.5 border border-gray-200 text-gray-700 font-bold">
+                                                    {driver.plate}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </td>
                                 <td className="px-6 py-4 text-xs text-gray-400">
                                     {new Date(driver.createdAt).toLocaleDateString('pt-BR')}

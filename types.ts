@@ -35,6 +35,9 @@ export interface Driver {
   vehicleType: VehicleType;
   phone: string;
   createdAt: string;
+  plate?: string;
+  model?: string;
+  color?: string;
 }
 
 export interface Client {

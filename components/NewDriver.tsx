@@ -17,6 +17,9 @@ export const NewDriver: React.FC<NewDriverProps> = ({ rates, initialData, onSubm
     address: '',
     phone: '',
     vehicleType: 'MOTO' as VehicleType,
+    plate: '',
+    model: '',
+    color: ''
   });
 
   useEffect(() => {
@@ -26,7 +29,10 @@ export const NewDriver: React.FC<NewDriverProps> = ({ rates, initialData, onSubm
         cpf: initialData.cpf,
         address: initialData.address,
         phone: initialData.phone,
-        vehicleType: initialData.vehicleType
+        vehicleType: initialData.vehicleType,
+        plate: initialData.plate || '',
+        model: initialData.model || '',
+        color: initialData.color || ''
       });
     }
   }, [initialData]);
@@ -86,7 +92,8 @@ export const NewDriver: React.FC<NewDriverProps> = ({ rates, initialData, onSubm
 
         <Card className="p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Veículo de Trabalho</h3>
-            <div>
+            
+            <div className="mb-6">
                 <label className="text-sm font-medium text-gray-700 block mb-2">Categoria do Veículo</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {rates.map(rate => (
@@ -104,6 +111,27 @@ export const NewDriver: React.FC<NewDriverProps> = ({ rates, initialData, onSubm
                         </button>
                     ))}
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input 
+                    label="Modelo" 
+                    placeholder="Ex: Honda CG 160 / Fiorino" 
+                    value={formData.model}
+                    onChange={e => setFormData({...formData, model: e.target.value})}
+                />
+                <Input 
+                    label="Placa" 
+                    placeholder="ABC-1234" 
+                    value={formData.plate}
+                    onChange={e => setFormData({...formData, plate: e.target.value.toUpperCase()})}
+                />
+                <Input 
+                    label="Cor" 
+                    placeholder="Ex: Branca" 
+                    value={formData.color}
+                    onChange={e => setFormData({...formData, color: e.target.value})}
+                />
             </div>
         </Card>
 
