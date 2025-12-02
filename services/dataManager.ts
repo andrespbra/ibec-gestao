@@ -33,7 +33,7 @@ export const DataManager = {
           rates: (rates.data && rates.data.length > 0) ? (rates.data as unknown as VehicleRate[]) : INITIAL_RATES
         };
       } catch (error) {
-        console.error("Error fetching data from Supabase, falling back to local:", error);
+        console.error("ERRO CRÍTICO: Falha ao buscar dados do Supabase. Verifique sua conexão e chaves.", error);
       }
     }
 
@@ -55,7 +55,11 @@ export const DataManager = {
 
     // Save Cloud
     if (this.isOnline && supabase) {
-      await supabase.from(table).insert([item]);
+      const { error } = await supabase.from(table).insert([item]);
+      if (error) {
+        console.error(`Erro ao salvar em '${table}':`, error.message, error.details);
+        alert(`Erro de sincronização: Os dados foram salvos localmente, mas falharam na nuvem.\nMotivo: ${error.message}`);
+      }
     }
   },
 
@@ -67,7 +71,10 @@ export const DataManager = {
 
     // Update Cloud
     if (this.isOnline && supabase) {
-      await supabase.from(table).update(item).eq(idField, item[idField]);
+      const { error } = await supabase.from(table).update(item).eq(idField, item[idField]);
+      if (error) {
+        console.error(`Erro ao atualizar '${table}':`, error.message);
+      }
     }
   },
 
