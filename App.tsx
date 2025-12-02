@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { INITIAL_RATES, TransportRequest, VehicleRate, RequestStatus, Driver, Client, DriverExpense } from './types';
 import { Dashboard } from './components/Dashboard';
@@ -11,41 +10,35 @@ import { NewClient } from './components/NewClient';
 import { Payroll } from './components/Payroll';
 import { Reports } from './components/Reports';
 import { Icons } from './components/Components';
+import { DataManager } from './services/dataManager';
 
 type ViewState = 'DASHBOARD' | 'NEW_REQUEST' | 'SETTINGS' | 'DRIVERS' | 'NEW_DRIVER' | 'CLIENTS' | 'NEW_CLIENT' | 'PAYROLL' | 'REPORTS';
 
-// Custom hook for LocalStorage persistence
-function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [value, setValue] = useState<T>(() => {
-    try {
-      const stickyValue = window.localStorage.getItem(key);
-      return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
-    } catch (error) {
-      console.error(`Error loading state for key ${key}:`, error);
-      return defaultValue;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.error(`Error saving state for key ${key}:`, error);
-    }
-  }, [key, value]);
-
-  return [value, setValue];
-}
-
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Data State with Persistence
-  const [rates, setRates] = useStickyState<VehicleRate[]>(INITIAL_RATES, 'logitrack_rates');
-  const [requests, setRequests] = useStickyState<TransportRequest[]>([], 'logitrack_requests');
-  const [drivers, setDrivers] = useStickyState<Driver[]>([], 'logitrack_drivers');
-  const [clients, setClients] = useStickyState<Client[]>([], 'logitrack_clients');
-  const [expenses, setExpenses] = useStickyState<DriverExpense[]>([], 'logitrack_expenses');
+  // Data State
+  const [rates, setRates] = useState<VehicleRate[]>(INITIAL_RATES);
+  const [requests, setRequests] = useState<TransportRequest[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [expenses, setExpenses] = useState<DriverExpense[]>([]);
+
+  // Load Data on Mount
+  useEffect(() => {
+    const load = async () => {
+        setIsLoading(true);
+        const data = await DataManager.fetchAllData();
+        setRates(data.rates);
+        setRequests(data.requests);
+        setDrivers(data.drivers);
+        setClients(data.clients);
+        setExpenses(data.expenses);
+        setIsLoading(false);
+    };
+    load();
+  }, []);
 
   const handleCreateRequest = (data: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => {
     const newRequest: TransportRequest = {
@@ -54,7 +47,9 @@ const App: React.FC = () => {
       status: 'PENDENTE',
       createdAt: new Date().toISOString()
     };
+    // Optimistic Update
     setRequests([newRequest, ...requests]);
+    DataManager.addRequest(newRequest);
     setCurrentView('DASHBOARD');
   };
 
@@ -65,6 +60,7 @@ const App: React.FC = () => {
           createdAt: new Date().toISOString()
       };
       setDrivers([newDriver, ...drivers]);
+      DataManager.addDriver(newDriver);
       setCurrentView('DRIVERS');
   };
 
@@ -75,6 +71,7 @@ const App: React.FC = () => {
         createdAt: new Date().toISOString()
     };
     setClients([newClient, ...clients]);
+    DataManager.addClient(newClient);
     setCurrentView('CLIENTS');
   };
 
@@ -84,15 +81,29 @@ const App: React.FC = () => {
           id: Math.random().toString(36).substr(2, 9)
       };
       setExpenses([newExpense, ...expenses]);
+      DataManager.addExpense(newExpense);
   };
 
   const handleStatusUpdate = (id: string, newStatus: RequestStatus) => {
     setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    DataManager.updateRequestStatus(id, newStatus, requests);
   };
 
   const handleRateUpdate = (updatedRate: VehicleRate) => {
       setRates(rates.map(r => r.type === updatedRate.type ? updatedRate : r));
+      DataManager.updateRate(updatedRate);
   };
+
+  if (isLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-gray-500 font-medium">Carregando dados...</p>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
@@ -101,6 +112,11 @@ const App: React.FC = () => {
         <div className="flex items-center gap-2 font-bold text-primary text-xl">
              <Icons.Truck /> LogiTrack AI
         </div>
+        {DataManager.isOnline && (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div> Online
+            </span>
+        )}
       </div>
 
       {/* Sidebar Navigation */}
@@ -148,8 +164,17 @@ const App: React.FC = () => {
                 <Icons.Settings /> Configurações
             </button>
         </nav>
-        <div className="p-4 border-t border-gray-100 text-xs text-gray-400">
-            v1.5.1 Persistent
+        <div className="p-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+            <span>v2.0 Cloud</span>
+            {DataManager.isOnline ? (
+                <span className="flex items-center gap-1 text-green-600 font-medium">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div> Sync On
+                </span>
+            ) : (
+                <span className="flex items-center gap-1 text-gray-400">
+                    <div className="w-2 h-2 rounded-full bg-gray-300"></div> Offline
+                </span>
+            )}
         </div>
       </aside>
 

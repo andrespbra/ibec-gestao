@@ -8,15 +8,18 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // Polyfill process.env.API_KEY for the browser
-      // We map VITE_API_KEY (from Vercel/Env) to process.env.API_KEY (used in code)
+      // Polyfill process.env.API_KEY for the browser code that might use it
       'process.env.API_KEY': JSON.stringify(env.VITE_API_KEY || ''),
+      'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
+      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
       'process.env.NODE_ENV': JSON.stringify(mode),
       
-      // General process polyfill to avoid "process is not defined" errors
+      // Generic process polyfill
       'process': {
         env: {
           API_KEY: JSON.stringify(env.VITE_API_KEY || ''),
+          VITE_SUPABASE_URL: JSON.stringify(env.VITE_SUPABASE_URL || ''),
+          VITE_SUPABASE_ANON_KEY: JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
           NODE_ENV: JSON.stringify(mode)
         }
       }
