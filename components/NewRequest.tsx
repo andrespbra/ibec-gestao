@@ -19,6 +19,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
     destination: '',
     vehicleType: 'MOTO' as VehicleType,
     driverId: '',
+    scheduledFor: '',
   });
 
   const [distanceKm, setDistanceKm] = useState<number>(0);
@@ -59,7 +60,11 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
     setIsEstimating(true);
     try {
       const result = await estimateRoute(formData.origin, formData.destination);
-      setDistanceKm(result.distanceKm);
+      if (result.distanceKm > 0) {
+          setDistanceKm(result.distanceKm);
+      } else {
+          setError("Não foi possível calcular a rota automaticamente. Insira a distância manualmente.");
+      }
     } catch (err) {
       setError("Falha ao estimar distância. Tente inserir manualmente.");
     } finally {
@@ -95,7 +100,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Detalhes da Carga</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Detalhes da Carga & Agendamento</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input 
                     label="Número da Nota Fiscal" 
@@ -112,6 +117,15 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
                     required
                 />
             </div>
+            <div className="mt-4">
+                <Input 
+                    label="Data/Hora do Agendamento (Opcional)" 
+                    type="datetime-local"
+                    value={formData.scheduledFor}
+                    onChange={e => setFormData({...formData, scheduledFor: e.target.value})}
+                />
+                <p className="text-xs text-gray-500 mt-1">Deixe em branco para saída imediata.</p>
+            </div>
         </Card>
 
         <Card className="p-6">
@@ -123,6 +137,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
                     value={formData.origin}
                     onChange={e => setFormData({...formData, origin: e.target.value})}
                     required
+                    onBlur={() => { if(formData.origin && formData.destination && distanceKm === 0) handleEstimate() }}
                 />
                 <Input 
                     label="Endereço de Entrega (Destino)" 
@@ -130,6 +145,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
                     value={formData.destination}
                     onChange={e => setFormData({...formData, destination: e.target.value})}
                     required
+                    onBlur={() => { if(formData.origin && formData.destination && distanceKm === 0) handleEstimate() }}
                 />
             </div>
 
@@ -140,7 +156,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
                         <input 
                             type="number" 
                             step="0.1" 
-                            className="border border-gray-300 rounded-md px-3 py-2 w-full"
+                            className="border border-gray-300 rounded-md px-3 py-2 w-full font-bold text-gray-800"
                             value={distanceKm}
                             onChange={e => setDistanceKm(parseFloat(e.target.value) || 0)}
                         />
@@ -190,6 +206,11 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
                                 </option>
                             ))}
                         </Select>
+                        {formData.driverId && (
+                            <p className="text-xs text-green-600 mt-1">
+                                * Um link de WhatsApp será gerado para o motorista ao salvar.
+                            </p>
+                        )}
                         {availableDrivers.length === 0 && (
                             <p className="text-xs text-orange-500 mt-1">Nenhum motorista disponível nesta categoria.</p>
                         )}
@@ -225,7 +246,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
 
         <div className="flex justify-end gap-3 pt-4 pb-12">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-            <Button type="submit">Cadastrar Solicitação</Button>
+            <Button type="submit">Cadastrar e Enviar</Button>
         </div>
       </form>
     </div>

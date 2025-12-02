@@ -15,6 +15,7 @@ export interface TransportRequest {
   clientCharge: number;
   status: RequestStatus;
   createdAt: string; // ISO String
+  scheduledFor?: string; // ISO String or DateTime string
   driverId?: string;
 }
 

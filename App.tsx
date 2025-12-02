@@ -52,10 +52,45 @@ const App: React.FC = () => {
       status: 'PENDENTE',
       createdAt: new Date().toISOString()
     };
+    
     // Optimistic Update
     setRequests([newRequest, ...requests]);
     DataManager.addRequest(newRequest);
     setCurrentView('DASHBOARD');
+
+    // WhatsApp Integration Logic
+    if (newRequest.driverId) {
+        const driver = drivers.find(d => d.id === newRequest.driverId);
+        if (driver && driver.phone) {
+            // Remove non-digits
+            const phone = driver.phone.replace(/\D/g, '');
+            
+            // Format Date
+            const scheduledDate = newRequest.scheduledFor 
+                ? new Date(newRequest.scheduledFor).toLocaleString('pt-BR') 
+                : 'Imediato';
+
+            const message = 
+`*🚚 Nova Solicitação LogiTrack!*
+
+👤 *Motorista:* ${driver.name}
+📦 *Nota:* ${newRequest.invoiceNumber}
+
+📍 *Retirada:* ${newRequest.origin}
+🏁 *Entrega:* ${newRequest.destination}
+
+📅 *Horário:* ${scheduledDate}
+💰 *Valor:* R$ ${newRequest.driverFee.toFixed(2)}
+
+⚠️ *Atenção:* Por favor, confirme o recebimento e compartilhe sua *Localização em Tempo Real* clicando no ícone de clipe/anexo do WhatsApp.`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/55${phone}?text=${encodedMessage}`;
+            
+            // Open WhatsApp in new tab
+            window.open(whatsappUrl, '_blank');
+        }
+    }
   };
 
   const handleSaveDriver = (data: Omit<Driver, 'id' | 'createdAt'>) => {
@@ -210,7 +245,7 @@ const App: React.FC = () => {
             </button>
         </nav>
         <div className="p-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
-            <span>v2.1 Cloud</span>
+            <span>v2.2 Cloud</span>
             {DataManager.isOnline ? (
                 <span className="flex items-center gap-1 text-green-600 font-medium">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div> Sync On
