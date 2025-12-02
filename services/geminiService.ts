@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize Gemini
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface RouteEstimate {
