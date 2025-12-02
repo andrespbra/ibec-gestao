@@ -1,7 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize Gemini
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface RouteEstimate {
@@ -11,12 +9,11 @@ export interface RouteEstimate {
 
 /**
  * Uses Gemini to estimate the distance between two addresses.
- * Note: In a production environment with Google Maps API, this would use the Distance Matrix API.
- * Here we use Gemini's knowledge base to estimate reasonable distances.
  */
 export const estimateRoute = async (origin: string, destination: string): Promise<RouteEstimate> => {
   if (!process.env.API_KEY) {
-    console.warn("API Key is missing. Please set API_KEY in your environment variables.");
+    console.warn("API Key is missing. Please set VITE_API_KEY in your Vercel environment variables.");
+    // Return 0 instead of crashing, allowing the user to enter data manually
     return { distanceKm: 0, durationMins: 0 };
   }
 
@@ -47,7 +44,6 @@ export const estimateRoute = async (origin: string, destination: string): Promis
     throw new Error("Empty response from AI");
   } catch (error) {
     console.error("AI Estimation Error:", error);
-    // Fallback/Mock for demo purposes if AI fails
     return { distanceKm: 0, durationMins: 0 };
   }
 };
