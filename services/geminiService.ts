@@ -22,11 +22,13 @@ export interface RouteEstimate {
 export const estimateRoute = async (origin: string, destination: string): Promise<RouteEstimate> => {
   // Check if API Key is available
   if (!process.env.API_KEY) {
-    console.warn("Gemini API Key is missing. Please check your Vercel environment variables (VITE_API_KEY).");
-    return { distanceKm: 0, durationMins: 0 };
+    console.error("Gemini API Key is missing. Please check your Vercel environment variables (VITE_API_KEY).");
+    throw new Error("Chave de API não configurada no sistema.");
   }
 
   try {
+    console.log(`Estimating route: ${origin} to ${destination}...`);
+    
     const prompt = `Calculate the estimated driving distance (in kilometers) and duration (in minutes) between "${origin}" and "${destination}".`;
 
     const response = await ai.models.generateContent({
@@ -46,7 +48,18 @@ export const estimateRoute = async (origin: string, destination: string): Promis
     });
 
     if (response.text) {
-      const data = JSON.parse(response.text);
+      // Sanitize response: remove Markdown code blocks if present
+      let cleanJson = response.text.trim();
+      if (cleanJson.startsWith('```json')) {
+        cleanJson = cleanJson.replace(/^```json/, '').replace(/```$/, '');
+      } else if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replace(/^```/, '').replace(/```$/, '');
+      }
+
+      const data = JSON.parse(cleanJson);
+      
+      console.log("Gemini Estimate Success:", data);
+
       return {
         distanceKm: Number(data.distanceKm) || 0,
         durationMins: Number(data.durationMins) || 0
@@ -56,7 +69,6 @@ export const estimateRoute = async (origin: string, destination: string): Promis
     throw new Error("No text content in AI response");
   } catch (error) {
     console.error("Gemini Route Estimation Failed:", error);
-    // Return default values so the user can continue manually
-    return { distanceKm: 0, durationMins: 0 };
+    throw error; // Propagate error so UI can show it
   }
 };

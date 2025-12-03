@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TransportRequest, VehicleType, VehicleRate, Driver, Client } from '../types';
 import { Button, Input, Card, Icons, Select } from './Components';
@@ -100,10 +99,11 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
       if (result.distanceKm > 0) {
           setDistanceKm(result.distanceKm);
       } else {
-          setError("Não foi possível calcular a rota automaticamente. Insira a distância manualmente.");
+          setError("Não foi possível calcular a rota. Verifique os endereços ou insira a distância manualmente.");
       }
-    } catch (err) {
-      setError("Falha ao estimar distância. Tente inserir manualmente.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Falha ao estimar distância. Verifique sua conexão ou insira manualmente.");
     } finally {
       setIsEstimating(false);
     }
@@ -220,7 +220,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                     <Icons.Wand /> Calcular via IA
                 </Button>
             </div>
-            {error && <p className="text-error text-sm mt-2">{error}</p>}
+            {error && <p className="text-error text-sm mt-2 font-medium bg-red-50 p-2 rounded">{error}</p>}
         </Card>
 
         <Card className="p-6 bg-blue-50 border-blue-100">
