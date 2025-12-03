@@ -292,6 +292,8 @@ const App: React.FC = () => {
                 <NewRequest 
                     rates={rates}
                     drivers={drivers}
+                    clients={clients}
+                    existingRequests={requests}
                     onSubmit={handleCreateRequest}
                     onCancel={() => setCurrentView('DASHBOARD')}
                 />

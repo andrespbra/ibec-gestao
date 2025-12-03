@@ -1,17 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { TransportRequest, VehicleType, VehicleRate, Driver } from '../types';
+import { TransportRequest, VehicleType, VehicleRate, Driver, Client } from '../types';
 import { Button, Input, Card, Icons, Select } from './Components';
 import { estimateRoute } from '../services/geminiService';
 
 interface NewRequestProps {
   rates: VehicleRate[];
   drivers: Driver[];
+  clients: Client[];
+  existingRequests: TransportRequest[];
   onSubmit: (request: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => void;
   onCancel: () => void;
 }
 
-export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit, onCancel }) => {
+export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     invoiceNumber: '',
     clientName: '',
@@ -28,6 +30,28 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
 
   // Financials
   const [financials, setFinancials] = useState({ driverFee: 0, clientCharge: 0 });
+
+  // Auto-Generate Invoice Number on Mount
+  useEffect(() => {
+    // Find highest invoice number with pattern "IBEC - XXX"
+    const prefix = "IBEC - ";
+    let maxNumber = 0;
+
+    existingRequests.forEach(req => {
+        if (req.invoiceNumber && req.invoiceNumber.startsWith(prefix)) {
+            const numPart = req.invoiceNumber.replace(prefix, '');
+            const num = parseInt(numPart, 10);
+            if (!isNaN(num) && num > maxNumber) {
+                maxNumber = num;
+            }
+        }
+    });
+
+    const nextNumber = maxNumber + 1;
+    const formattedInvoice = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+    
+    setFormData(prev => ({ ...prev, invoiceNumber: formattedInvoice }));
+  }, [existingRequests]);
 
   // Recalculate costs based on distance and vehicle type
   useEffect(() => {
@@ -50,6 +74,19 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
   useEffect(() => {
     setFormData(prev => ({ ...prev, driverId: '' }));
   }, [formData.vehicleType]);
+
+  const handleClientSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedClientId = e.target.value;
+      const client = clients.find(c => c.id === selectedClientId);
+      
+      if (client) {
+          setFormData(prev => ({
+              ...prev,
+              clientName: client.name,
+              origin: client.address // Autofill origin with client address
+          }));
+      }
+  };
 
   const handleEstimate = async () => {
     if (!formData.origin || !formData.destination) {
@@ -104,18 +141,35 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, onSubmit
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input 
                     label="Número da Nota Fiscal" 
-                    placeholder="Ex: 123456" 
+                    placeholder="IBEC - 001" 
                     value={formData.invoiceNumber}
                     onChange={e => setFormData({...formData, invoiceNumber: e.target.value})}
                     required
                 />
-                <Input 
-                    label="Cliente / Destinatário" 
-                    placeholder="Nome da empresa ou pessoa" 
-                    value={formData.clientName}
-                    onChange={e => setFormData({...formData, clientName: e.target.value})}
-                    required
-                />
+                
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700">Selecionar Cliente (Opcional)</label>
+                    <select
+                        className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                        onChange={handleClientSelect}
+                        defaultValue=""
+                    >
+                        <option value="" disabled>Escolha um cliente cadastrado...</option>
+                        {clients.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="md:col-span-2">
+                    <Input 
+                        label="Cliente / Destinatário" 
+                        placeholder="Nome da empresa ou pessoa" 
+                        value={formData.clientName}
+                        onChange={e => setFormData({...formData, clientName: e.target.value})}
+                        required
+                    />
+                </div>
             </div>
             <div className="mt-4">
                 <Input 
