@@ -1,14 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Declare process to avoid TypeScript errors in the browser environment
-// where Vite polyfills it.
+// Declare process variable to satisfy TypeScript and access the API key injected by Vite
 declare var process: {
   env: {
     API_KEY: string;
   };
 };
 
-// Initialize the SDK with the API key from process.env
+// Initialize the SDK with the API Key directly from process.env
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface RouteEstimate {
@@ -20,10 +19,11 @@ export interface RouteEstimate {
  * Uses Gemini to estimate the distance between two addresses.
  */
 export const estimateRoute = async (origin: string, destination: string): Promise<RouteEstimate> => {
-  // Check if API Key is available
+  // Check if API Key is available specifically when the function is called
   if (!process.env.API_KEY) {
-    console.error("Gemini API Key is missing. Please check your Vercel environment variables (VITE_API_KEY).");
-    throw new Error("Chave de API não configurada no sistema.");
+    console.error("Gemini API Key is missing.");
+    console.error("Please create a .env file in the root directory with: VITE_API_KEY=your_key_here");
+    throw new Error("Chave de API não configurada. Crie um arquivo .env com VITE_API_KEY=...");
   }
 
   try {
@@ -67,8 +67,9 @@ export const estimateRoute = async (origin: string, destination: string): Promis
     }
 
     throw new Error("No text content in AI response");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Route Estimation Failed:", error);
-    throw error; // Propagate error so UI can show it
+    // Return a user-friendly error message
+    throw new Error(error.message || "Falha ao calcular rota.");
   }
 };

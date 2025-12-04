@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { TransportRequest, VehicleType, VehicleRate, Driver, Client } from '../types';
+import { TransportRequest, VehicleType, VehicleRate, Driver, Client, ActivityType } from '../types';
 import { Button, Input, Card, Icons, Select } from './Components';
 import { estimateRoute } from '../services/geminiService';
 
@@ -21,6 +22,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     vehicleType: 'MOTO' as VehicleType,
     driverId: '',
     scheduledFor: '',
+    activityType: 'ENTREGAR' as ActivityType,
+    contactOnSite: '',
+    observations: ''
   });
 
   const [distanceKm, setDistanceKm] = useState<number>(0);
@@ -82,7 +86,8 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
           setFormData(prev => ({
               ...prev,
               clientName: client.name,
-              origin: client.address // Autofill origin with client address
+              origin: client.address, // Autofill origin with client address
+              contactOnSite: client.contactName // Autofill contact
           }));
       }
   };
@@ -170,15 +175,44 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                         required
                     />
                 </div>
-            </div>
-            <div className="mt-4">
+
                 <Input 
-                    label="Data/Hora do Agendamento (Opcional)" 
-                    type="datetime-local"
-                    value={formData.scheduledFor}
-                    onChange={e => setFormData({...formData, scheduledFor: e.target.value})}
+                    label="Contato no Local" 
+                    placeholder="Nome / Telefone" 
+                    value={formData.contactOnSite}
+                    onChange={e => setFormData({...formData, contactOnSite: e.target.value})}
                 />
-                <p className="text-xs text-gray-500 mt-1">Deixe em branco para saída imediata.</p>
+
+                <Select 
+                    label="Tipo de Atividade"
+                    value={formData.activityType}
+                    onChange={e => setFormData({...formData, activityType: e.target.value as ActivityType})}
+                >
+                    <option value="ENTREGAR">Entregar</option>
+                    <option value="COLETAR">Coletar</option>
+                    <option value="COLETAR_ENTREGAR">Coletar e Entregar</option>
+                    <option value="OUTROS">Outros</option>
+                </Select>
+
+                <div className="md:col-span-2">
+                    <Input 
+                        label="Data/Hora do Agendamento (Opcional)" 
+                        type="datetime-local"
+                        value={formData.scheduledFor}
+                        onChange={e => setFormData({...formData, scheduledFor: e.target.value})}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Deixe em branco para saída imediata.</p>
+                </div>
+
+                 <div className="md:col-span-2 flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700">Observações</label>
+                    <textarea 
+                        className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[80px]"
+                        placeholder="Instruções especiais, referência de endereço, etc."
+                        value={formData.observations}
+                        onChange={e => setFormData({...formData, observations: e.target.value})}
+                    />
+                </div>
             </div>
         </Card>
 

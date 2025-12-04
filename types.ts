@@ -3,6 +3,8 @@ export type VehicleType = 'MOTO' | 'CARRO' | 'UTILITARIO' | 'CAMINHAO';
 
 export type RequestStatus = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO';
 
+export type ActivityType = 'COLETAR' | 'ENTREGAR' | 'COLETAR_ENTREGAR' | 'OUTROS';
+
 export interface TransportRequest {
   id: string;
   invoiceNumber: string;
@@ -17,6 +19,9 @@ export interface TransportRequest {
   createdAt: string; // ISO String
   scheduledFor?: string; // ISO String or DateTime string
   driverId?: string;
+  activityType?: ActivityType;
+  contactOnSite?: string;
+  observations?: string;
 }
 
 export interface VehicleRate {
