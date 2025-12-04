@@ -1,14 +1,22 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Declare process variable to satisfy TypeScript and access the API key injected by Vite
-declare var process: {
-  env: {
-    API_KEY: string;
-  };
+// Helper to get API Key safely from either process.env (injected by Vite define) or import.meta.env (Vite native)
+const getApiKey = (): string => {
+  // First try process.env (polyfilled)
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  // Fallback to Vite native env
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_API_KEY) {
+    return (import.meta as any).env.VITE_API_KEY;
+  }
+  return '';
 };
 
-// Initialize the SDK with the API Key directly from process.env
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const API_KEY = getApiKey();
+
+// Initialize the SDK with the retrieved API Key
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export interface RouteEstimate {
   distanceKm: number;
@@ -20,10 +28,10 @@ export interface RouteEstimate {
  */
 export const estimateRoute = async (origin: string, destination: string): Promise<RouteEstimate> => {
   // Check if API Key is available specifically when the function is called
-  if (!process.env.API_KEY) {
+  if (!API_KEY) {
     console.error("Gemini API Key is missing.");
     console.error("Please create a .env file in the root directory with: VITE_API_KEY=your_key_here");
-    throw new Error("Chave de API não configurada. Crie um arquivo .env com VITE_API_KEY=...");
+    throw new Error("Chave de API não encontrada. Crie um arquivo .env na raiz com VITE_API_KEY=...");
   }
 
   try {
