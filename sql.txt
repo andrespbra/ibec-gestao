@@ -1,0 +1,121 @@
+-- Enable UUID extension (optional but good practice)
+create extension if not exists "uuid-ossp";
+
+-- 1. Table: requests
+create table if not exists requests (
+  "id" text primary key,
+  "invoiceNumber" text,
+  "clientName" text,
+  "origin" text,
+  "destination" text,
+  "vehicleType" text,
+  "distanceKm" float,
+  "driverFee" float,
+  "clientCharge" float,
+  "status" text,
+  "createdAt" text,
+  "driverId" text,
+  "scheduledFor" text,
+  "activityType" text,
+  "contactOnSite" text,
+  "observations" text
+);
+
+-- 2. Table: drivers
+create table if not exists drivers (
+  "id" text primary key,
+  "name" text,
+  "cpf" text,
+  "address" text,
+  "vehicleType" text,
+  "phone" text,
+  "createdAt" text,
+  "plate" text,
+  "model" text,
+  "color" text
+);
+
+-- 3. Table: clients
+create table if not exists clients (
+  "id" text primary key,
+  "name" text,
+  "cnpj" text,
+  "address" text,
+  "costCenter" text,
+  "contactName" text,
+  "contactPhone" text,
+  "contactEmail" text,
+  "paymentDay" int,
+  "createdAt" text
+);
+
+-- 4. Table: expenses
+create table if not exists expenses (
+  "id" text primary key,
+  "driverId" text,
+  "type" text,
+  "amount" float,
+  "date" text,
+  "description" text
+);
+
+-- 5. Table: rates
+create table if not exists rates (
+  "type" text primary key,
+  "label" text,
+  "costPerKm" float,
+  "chargePerKm" float,
+  "baseFee" float
+);
+
+-- 6. Insert Default Rates (prevent empty config)
+insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
+values 
+  ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
+  ('CARRO', 'Carro', 2.50, 4.00, 8.00),
+  ('UTILITARIO', 'Utilitário', 4.00, 6.50, 15.00),
+  ('CAMINHAO', 'Caminhão', 8.00, 12.00, 50.00)
+on conflict ("type") do nothing;
+
+-- 7. SAFELY ADD NEW COLUMNS (Migration Logic)
+-- This block ensures that if you already created the tables before, 
+-- the new columns are added without error.
+
+do $$
+begin
+  -- Add 'scheduledFor' to requests
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='scheduledFor') then
+    alter table requests add column "scheduledFor" text;
+  end if;
+
+  -- Add 'activityType' to requests
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='activityType') then
+    alter table requests add column "activityType" text;
+  end if;
+
+  -- Add 'contactOnSite' to requests
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='contactOnSite') then
+    alter table requests add column "contactOnSite" text;
+  end if;
+
+  -- Add 'observations' to requests
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='observations') then
+    alter table requests add column "observations" text;
+  end if;
+
+  -- Add 'plate' to drivers
+  if not exists (select 1 from information_schema.columns where table_name='drivers' and column_name='plate') then
+    alter table drivers add column "plate" text;
+  end if;
+
+  -- Add 'model' to drivers
+  if not exists (select 1 from information_schema.columns where table_name='drivers' and column_name='model') then
+    alter table drivers add column "model" text;
+  end if;
+
+  -- Add 'color' to drivers
+  if not exists (select 1 from information_schema.columns where table_name='drivers' and column_name='color') then
+    alter table drivers add column "color" text;
+  end if;
+end
+$$;
