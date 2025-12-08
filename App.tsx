@@ -83,6 +83,15 @@ const App: React.FC = () => {
                 const scheduledDate = newRequest.scheduledFor 
                     ? new Date(newRequest.scheduledFor).toLocaleString('pt-BR') 
                     : 'Imediato';
+                
+                // Readable Activity
+                const activityMap: Record<string, string> = {
+                    'ENTREGAR': 'Entregar',
+                    'COLETAR': 'Coletar',
+                    'COLETAR_ENTREGAR': 'Coletar e Entregar',
+                    'OUTROS': 'Outros'
+                };
+                const activity = newRequest.activityType ? activityMap[newRequest.activityType] : 'Entregar';
 
                 const message = 
 `*🚚 Nova Solicitação LogiTrack!*
@@ -90,8 +99,12 @@ const App: React.FC = () => {
 👤 *Motorista:* ${driver.name}
 📦 *Nota:* ${newRequest.invoiceNumber}
 
+📝 *Atividade:* ${activity}
 📍 *Retirada:* ${newRequest.origin}
 🏁 *Entrega:* ${newRequest.destination}
+
+📞 *Contato Local:* ${newRequest.contactOnSite || 'N/A'}
+📋 *Obs:* ${newRequest.observations || 'N/A'}
 
 📅 *Horário:* ${scheduledDate}
 💰 *Valor:* R$ ${newRequest.driverFee.toFixed(2)}
