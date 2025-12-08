@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TransportRequest, RequestStatus, Driver } from '../types';
 import { Card, StatusBadge, VehicleBadge, Icons, Button } from './Components';
@@ -7,9 +8,10 @@ interface DashboardProps {
   drivers: Driver[];
   onNewRequest: () => void;
   onUpdateStatus: (id: string, newStatus: RequestStatus) => void;
+  onDeleteRequest: (id: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, onNewRequest, onUpdateStatus }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, onNewRequest, onUpdateStatus, onDeleteRequest }) => {
   
   // Stats
   const totalRequests = requests.length;
@@ -22,6 +24,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, onNewRe
     return driver ? driver.name : 'Desconhecido';
   };
   
+  const handleDelete = (id: string, invoice: string) => {
+    if (window.confirm(`Tem certeza que deseja remover a solicitação Nota Fiscal: ${invoice}?`)) {
+        onDeleteRequest(id);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
@@ -107,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, onNewRe
                                 <td className="px-6 py-4">
                                     <StatusBadge status={request.status} />
                                 </td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-6 py-4 text-right flex justify-end items-center gap-2">
                                     {request.status === 'PENDENTE' && (
                                         <button 
                                             onClick={() => onUpdateStatus(request.id, 'EM_ANDAMENTO')}
@@ -127,6 +135,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, onNewRe
                                     {request.status === 'CONCLUIDO' && (
                                         <span className="text-gray-400 text-xs">Finalizado</span>
                                     )}
+                                    <button 
+                                        onClick={() => handleDelete(request.id, request.invoiceNumber)}
+                                        className="text-red-400 hover:text-red-600 p-1"
+                                        title="Remover"
+                                    >
+                                        <Icons.Trash />
+                                    </button>
                                 </td>
                             </tr>
                         ))

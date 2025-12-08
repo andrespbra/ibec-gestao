@@ -78,6 +78,21 @@ export const DataManager = {
     }
   },
 
+  async delete(table: string, storageKey: string, id: string) {
+    // Delete Local
+    const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const filtered = current.filter((i: any) => i.id !== id);
+    localStorage.setItem(storageKey, JSON.stringify(filtered));
+
+    // Delete Cloud
+    if (this.isOnline && supabase) {
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) {
+         console.error(`Erro ao deletar de '${table}':`, error.message);
+      }
+    }
+  },
+
   // --- Specific Methods ---
   async addRequest(item: TransportRequest) {
     await this.add('requests', STORAGE_KEYS.REQUESTS, item);
@@ -93,6 +108,10 @@ export const DataManager = {
 
   async updateRequest(item: TransportRequest) {
     await this.update('requests', STORAGE_KEYS.REQUESTS, item);
+  },
+
+  async deleteRequest(id: string) {
+    await this.delete('requests', STORAGE_KEYS.REQUESTS, id);
   },
 
   async addDriver(item: Driver) {

@@ -15,50 +15,36 @@ interface NewRequestProps {
 }
 
 export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, initialData, onSubmit, onCancel }) => {
+  // Initialize State directly from initialData if present.
+  // This prevents the useEffect auto-calculation from running immediately with empty values
+  // and overriding the saved prices.
+  
   const [formData, setFormData] = useState({
-    invoiceNumber: '',
-    clientName: '',
-    origin: '',
-    destination: '',
-    vehicleType: 'MOTO' as VehicleType,
-    driverId: '',
-    scheduledFor: '',
-    activityType: 'ENTREGAR' as ActivityType,
-    contactOnSite: '',
-    observations: ''
+    invoiceNumber: initialData?.invoiceNumber || '',
+    clientName: initialData?.clientName || '',
+    origin: initialData?.origin || '',
+    destination: initialData?.destination || '',
+    vehicleType: initialData?.vehicleType || ('MOTO' as VehicleType),
+    driverId: initialData?.driverId || '',
+    scheduledFor: initialData?.scheduledFor || '',
+    activityType: initialData?.activityType || ('ENTREGAR' as ActivityType),
+    contactOnSite: initialData?.contactOnSite || '',
+    observations: initialData?.observations || ''
   });
 
-  const [distanceKm, setDistanceKm] = useState<number>(0);
+  const [distanceKm, setDistanceKm] = useState<number>(initialData?.distanceKm || 0);
+  const [financials, setFinancials] = useState({ 
+    driverFee: initialData?.driverFee || 0, 
+    clientCharge: initialData?.clientCharge || 0 
+  });
+
   const [isEstimating, setIsEstimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Financials
-  const [financials, setFinancials] = useState({ driverFee: 0, clientCharge: 0 });
-
-  // Initialize Data (Edit Mode vs Create Mode)
+  // Initialize Invoice Number for NEW requests only
   useEffect(() => {
-    if (initialData) {
-        // EDIT MODE: Populate fields
-        setFormData({
-            invoiceNumber: initialData.invoiceNumber,
-            clientName: initialData.clientName,
-            origin: initialData.origin,
-            destination: initialData.destination,
-            vehicleType: initialData.vehicleType,
-            driverId: initialData.driverId || '',
-            scheduledFor: initialData.scheduledFor || '',
-            activityType: initialData.activityType || 'ENTREGAR',
-            contactOnSite: initialData.contactOnSite || '',
-            observations: initialData.observations || ''
-        });
-        setDistanceKm(initialData.distanceKm);
-        setFinancials({
-            driverFee: initialData.driverFee,
-            clientCharge: initialData.clientCharge
-        });
-    } else {
+    if (!initialData) {
         // CREATE MODE: Auto-Generate Invoice Number
-        // Find highest invoice number with pattern "IBEC - XXX"
         const prefix = "IBEC - ";
         let maxNumber = 0;
 
@@ -81,23 +67,21 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
 
   // Recalculate costs based on distance and vehicle type
   useEffect(() => {
-    // PRESERVE INITIAL VALUES ON LOAD:
-    // If we are editing, and the current values match the initial values, 
-    // do NOT recalculate. This allows manual price overrides from the DB to persist.
+    // PROTECT MANUALLY EDITED VALUES:
+    // If we have initialData, we only want to recalculate if the user *explicitly*
+    // changes the vehicle type or the distance.
     if (initialData) {
-        const isUnchanged = 
-            initialData.vehicleType === formData.vehicleType && 
-            initialData.distanceKm === distanceKm;
-            
-        // If critical fields haven't changed, and we have valid financials loaded, skip auto-calc
-        if (isUnchanged && financials.driverFee !== 0) {
+        const isVehicleSame = initialData.vehicleType === formData.vehicleType;
+        const isDistanceSame = initialData.distanceKm === distanceKm;
+        
+        // If critical fields match the saved data, DO NOT recalculate financials.
+        // This preserves the manual overrides saved in the database.
+        if (isVehicleSame && isDistanceSame) {
             return;
         }
     }
 
     const rate = rates.find(r => r.type === formData.vehicleType);
-    
-    // If no rate found, stop (fixes potential TS unused var issue if strictly typed logic fails)
     if (!rate) return;
 
     if (distanceKm > 0) {
@@ -105,8 +89,8 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
         driverFee: parseFloat((rate.baseFee + (distanceKm * rate.costPerKm)).toFixed(2)),
         clientCharge: parseFloat((rate.baseFee + (distanceKm * rate.chargePerKm)).toFixed(2))
       });
-    } else {
-        // Minimum/Base fee showing if distance is 0
+    } else if (!initialData) {
+        // Only set minimums if it's a new request and distance is 0
         setFinancials({
             driverFee: rate.baseFee,
             clientCharge: rate.baseFee
@@ -114,7 +98,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     }
   }, [distanceKm, formData.vehicleType, rates]);
 
-  // Reset driver selection when vehicle type changes (only if user changes it, not on load)
+  // Reset driver selection when vehicle type changes manually
   useEffect(() => {
     if (initialData && formData.vehicleType === initialData.vehicleType) return;
     setFormData(prev => ({ ...prev, driverId: '' }));

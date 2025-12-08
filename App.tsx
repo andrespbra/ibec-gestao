@@ -126,6 +126,12 @@ const App: React.FC = () => {
     setCurrentView('NEW_REQUEST');
   };
 
+  const handleDeleteRequest = (id: string) => {
+      // Optimistic update
+      setRequests(requests.filter(r => r.id !== id));
+      DataManager.deleteRequest(id);
+  };
+
   const handleSaveDriver = (data: Omit<Driver, 'id' | 'createdAt'>) => {
       if (editingDriver) {
         // Update existing driver
@@ -328,6 +334,7 @@ const App: React.FC = () => {
                         setCurrentView('NEW_REQUEST');
                     }}
                     onUpdateStatus={handleStatusUpdate}
+                    onDeleteRequest={handleDeleteRequest}
                 />
             )}
             {currentView === 'NEW_REQUEST' && (
@@ -402,6 +409,7 @@ const App: React.FC = () => {
                     requests={requests}
                     clients={clients}
                     onEditRequest={handleEditRequest}
+                    onDeleteRequest={handleDeleteRequest}
                 />
             )}
             {currentView === 'SETTINGS' && (

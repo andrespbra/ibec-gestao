@@ -9,9 +9,10 @@ interface ReportsProps {
   requests: TransportRequest[];
   clients: Client[];
   onEditRequest: (request: TransportRequest) => void;
+  onDeleteRequest: (id: string) => void;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditRequest }) => {
+export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditRequest, onDeleteRequest }) => {
   // Filter States
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -106,6 +107,12 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
     });
 
     doc.save(`relatorio_logitrack_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleDelete = (id: string, invoice: string) => {
+      if (window.confirm(`Tem certeza que deseja remover a solicitação Nota Fiscal: ${invoice}?`)) {
+          onDeleteRequest(id);
+      }
   };
 
   return (
@@ -250,13 +257,20 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                                 <td className={`px-6 py-4 text-right font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     R$ {profit.toFixed(2)}
                                 </td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-6 py-4 text-right flex justify-end gap-2">
                                      <button 
                                       onClick={() => onEditRequest(req)}
                                       className="text-gray-500 hover:text-primary transition-colors p-1"
                                       title="Editar"
                                     >
                                       <Icons.Edit />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDelete(req.id, req.invoiceNumber)}
+                                        className="text-gray-500 hover:text-red-500 transition-colors p-1"
+                                        title="Remover"
+                                    >
+                                        <Icons.Trash />
                                     </button>
                                 </td>
                             </tr>
