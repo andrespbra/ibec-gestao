@@ -8,9 +8,10 @@ import autoTable from 'jspdf-autotable';
 interface ReportsProps {
   requests: TransportRequest[];
   clients: Client[];
+  onEditRequest: (request: TransportRequest) => void;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ requests, clients }) => {
+export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditRequest }) => {
   // Filter States
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -212,12 +213,13 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients }) => {
                         <th className="px-6 py-3 text-right">Custo</th>
                         <th className="px-6 py-3 text-right">Receita</th>
                         <th className="px-6 py-3 text-right">Lucro</th>
+                        <th className="px-6 py-3 text-right">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
                     {filteredData.length === 0 ? (
                         <tr>
-                            <td colSpan={7} className="px-6 py-10 text-center text-gray-400">
+                            <td colSpan={8} className="px-6 py-10 text-center text-gray-400">
                                 Nenhum registro encontrado para os filtros selecionados.
                             </td>
                         </tr>
@@ -247,6 +249,15 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients }) => {
                                 </td>
                                 <td className={`px-6 py-4 text-right font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     R$ {profit.toFixed(2)}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                     <button 
+                                      onClick={() => onEditRequest(req)}
+                                      className="text-gray-500 hover:text-primary transition-colors p-1"
+                                      title="Editar"
+                                    >
+                                      <Icons.Edit />
+                                    </button>
                                 </td>
                             </tr>
                           );

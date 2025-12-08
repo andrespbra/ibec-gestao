@@ -29,6 +29,7 @@ const App: React.FC = () => {
   // Editing State
   const [editingDriver, setEditingDriver] = useState<Driver | undefined>(undefined);
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
+  const [editingRequest, setEditingRequest] = useState<TransportRequest | undefined>(undefined);
 
   // Load Data on Mount
   useEffect(() => {
@@ -45,32 +46,45 @@ const App: React.FC = () => {
     load();
   }, []);
 
-  const handleCreateRequest = (data: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => {
-    const newRequest: TransportRequest = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      status: 'PENDENTE',
-      createdAt: new Date().toISOString()
-    };
-    
-    // Optimistic Update
-    setRequests([newRequest, ...requests]);
-    DataManager.addRequest(newRequest);
-    setCurrentView('DASHBOARD');
+  const handleSaveRequest = (data: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => {
+    if (editingRequest) {
+        // UPDATE Existing
+        const updatedRequest: TransportRequest = {
+            ...editingRequest,
+            ...data
+        };
+        // Optimistic Update
+        setRequests(requests.map(r => r.id === updatedRequest.id ? updatedRequest : r));
+        DataManager.updateRequest(updatedRequest);
+        setCurrentView('REPORTS'); // Go back to reports context usually when editing
+        setEditingRequest(undefined);
+    } else {
+        // CREATE New
+        const newRequest: TransportRequest = {
+            ...data,
+            id: Math.random().toString(36).substr(2, 9),
+            status: 'PENDENTE',
+            createdAt: new Date().toISOString()
+        };
+        
+        // Optimistic Update
+        setRequests([newRequest, ...requests]);
+        DataManager.addRequest(newRequest);
+        setCurrentView('DASHBOARD');
 
-    // WhatsApp Integration Logic
-    if (newRequest.driverId) {
-        const driver = drivers.find(d => d.id === newRequest.driverId);
-        if (driver && driver.phone) {
-            // Remove non-digits
-            const phone = driver.phone.replace(/\D/g, '');
-            
-            // Format Date
-            const scheduledDate = newRequest.scheduledFor 
-                ? new Date(newRequest.scheduledFor).toLocaleString('pt-BR') 
-                : 'Imediato';
+        // WhatsApp Integration Logic
+        if (newRequest.driverId) {
+            const driver = drivers.find(d => d.id === newRequest.driverId);
+            if (driver && driver.phone) {
+                // Remove non-digits
+                const phone = driver.phone.replace(/\D/g, '');
+                
+                // Format Date
+                const scheduledDate = newRequest.scheduledFor 
+                    ? new Date(newRequest.scheduledFor).toLocaleString('pt-BR') 
+                    : 'Imediato';
 
-            const message = 
+                const message = 
 `*🚚 Nova Solicitação LogiTrack!*
 
 👤 *Motorista:* ${driver.name}
@@ -84,13 +98,19 @@ const App: React.FC = () => {
 
 ⚠️ *Atenção:* Por favor, confirme o recebimento e compartilhe sua *Localização em Tempo Real* clicando no ícone de clipe/anexo do WhatsApp.`;
 
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/55${phone}?text=${encodedMessage}`;
-            
-            // Open WhatsApp in new tab
-            window.open(whatsappUrl, '_blank');
+                const encodedMessage = encodeURIComponent(message);
+                const whatsappUrl = `https://wa.me/55${phone}?text=${encodedMessage}`;
+                
+                // Open WhatsApp in new tab
+                window.open(whatsappUrl, '_blank');
+            }
         }
     }
+  };
+
+  const handleEditRequest = (request: TransportRequest) => {
+    setEditingRequest(request);
+    setCurrentView('NEW_REQUEST');
   };
 
   const handleSaveDriver = (data: Omit<Driver, 'id' | 'createdAt'>) => {
@@ -202,14 +222,20 @@ const App: React.FC = () => {
         </div>
         <nav className="flex-1 p-4 space-y-2">
             <button 
-                onClick={() => setCurrentView('DASHBOARD')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'DASHBOARD' || currentView === 'NEW_REQUEST' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                onClick={() => {
+                    setCurrentView('DASHBOARD');
+                    setEditingRequest(undefined);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'DASHBOARD' || (currentView === 'NEW_REQUEST' && !editingRequest) ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
             >
                 <Icons.Home /> Dashboard
             </button>
             <button 
-                onClick={() => setCurrentView('REPORTS')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'REPORTS' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                onClick={() => {
+                    setCurrentView('REPORTS');
+                    setEditingRequest(undefined);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'REPORTS' || (currentView === 'NEW_REQUEST' && editingRequest) ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
             >
                 <Icons.BarChart /> Relatórios
             </button>
@@ -284,7 +310,10 @@ const App: React.FC = () => {
                 <Dashboard 
                     requests={requests}
                     drivers={drivers}
-                    onNewRequest={() => setCurrentView('NEW_REQUEST')}
+                    onNewRequest={() => {
+                        setEditingRequest(undefined);
+                        setCurrentView('NEW_REQUEST');
+                    }}
                     onUpdateStatus={handleStatusUpdate}
                 />
             )}
@@ -294,8 +323,16 @@ const App: React.FC = () => {
                     drivers={drivers}
                     clients={clients}
                     existingRequests={requests}
-                    onSubmit={handleCreateRequest}
-                    onCancel={() => setCurrentView('DASHBOARD')}
+                    initialData={editingRequest}
+                    onSubmit={handleSaveRequest}
+                    onCancel={() => {
+                        if (editingRequest) {
+                            setCurrentView('REPORTS');
+                        } else {
+                            setCurrentView('DASHBOARD');
+                        }
+                        setEditingRequest(undefined);
+                    }}
                 />
             )}
             {currentView === 'DRIVERS' && (
@@ -351,6 +388,7 @@ const App: React.FC = () => {
                 <Reports 
                     requests={requests}
                     clients={clients}
+                    onEditRequest={handleEditRequest}
                 />
             )}
             {currentView === 'SETTINGS' && (

@@ -9,11 +9,12 @@ interface NewRequestProps {
   drivers: Driver[];
   clients: Client[];
   existingRequests: TransportRequest[];
+  initialData?: TransportRequest; // Added for editing
   onSubmit: (request: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => void;
   onCancel: () => void;
 }
 
-export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, onSubmit, onCancel }) => {
+export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, initialData, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     invoiceNumber: '',
     clientName: '',
@@ -34,30 +35,72 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
   // Financials
   const [financials, setFinancials] = useState({ driverFee: 0, clientCharge: 0 });
 
-  // Auto-Generate Invoice Number on Mount
+  // Initialize Data (Edit Mode vs Create Mode)
   useEffect(() => {
-    // Find highest invoice number with pattern "IBEC - XXX"
-    const prefix = "IBEC - ";
-    let maxNumber = 0;
+    if (initialData) {
+        // EDIT MODE: Populate fields
+        setFormData({
+            invoiceNumber: initialData.invoiceNumber,
+            clientName: initialData.clientName,
+            origin: initialData.origin,
+            destination: initialData.destination,
+            vehicleType: initialData.vehicleType,
+            driverId: initialData.driverId || '',
+            scheduledFor: initialData.scheduledFor || '',
+            activityType: initialData.activityType || 'ENTREGAR',
+            contactOnSite: initialData.contactOnSite || '',
+            observations: initialData.observations || ''
+        });
+        setDistanceKm(initialData.distanceKm);
+        setFinancials({
+            driverFee: initialData.driverFee,
+            clientCharge: initialData.clientCharge
+        });
+    } else {
+        // CREATE MODE: Auto-Generate Invoice Number
+        // Find highest invoice number with pattern "IBEC - XXX"
+        const prefix = "IBEC - ";
+        let maxNumber = 0;
 
-    existingRequests.forEach(req => {
-        if (req.invoiceNumber && req.invoiceNumber.startsWith(prefix)) {
-            const numPart = req.invoiceNumber.replace(prefix, '');
-            const num = parseInt(numPart, 10);
-            if (!isNaN(num) && num > maxNumber) {
-                maxNumber = num;
+        existingRequests.forEach(req => {
+            if (req.invoiceNumber && req.invoiceNumber.startsWith(prefix)) {
+                const numPart = req.invoiceNumber.replace(prefix, '');
+                const num = parseInt(numPart, 10);
+                if (!isNaN(num) && num > maxNumber) {
+                    maxNumber = num;
+                }
             }
-        }
-    });
+        });
 
-    const nextNumber = maxNumber + 1;
-    const formattedInvoice = `${prefix}${String(nextNumber).padStart(3, '0')}`;
-    
-    setFormData(prev => ({ ...prev, invoiceNumber: formattedInvoice }));
-  }, [existingRequests]);
+        const nextNumber = maxNumber + 1;
+        const formattedInvoice = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+        
+        setFormData(prev => ({ ...prev, invoiceNumber: formattedInvoice }));
+    }
+  }, [initialData, existingRequests]);
 
   // Recalculate costs based on distance and vehicle type
+  // Note: In Edit mode, this will run on mount because distanceKm is set. 
+  // If you want to preserve exact manual prices from DB, you might need extra logic, 
+  // but usually re-calculating on load with current rates is acceptable or preferred.
+  // To strictly preserve DB values on load, we could add a check.
   useEffect(() => {
+    // Only calculate if we are NOT in the initial load of edit mode 
+    // (Simulated by checking if financials are 0 or if user changed something)
+    // For simplicity, we allow recalculation but if the user manually overrides in the UI, it stays.
+    
+    // However, to prevent overwriting DB values on open:
+    if (initialData && financials.driverFee !== 0 && financials.clientCharge !== 0) {
+        // Optimization: If values match what we just loaded, don't re-run rate logic immediately
+        // allowing the values set in the first useEffect to stick.
+        // But if vehicle type changes, we MUST re-run.
+        const rate = rates.find(r => r.type === formData.vehicleType);
+        // Simple check: If vehicle type changed from initial, calc.
+        if (initialData.vehicleType === formData.vehicleType && initialData.distanceKm === distanceKm) {
+            return;
+        }
+    }
+
     const rate = rates.find(r => r.type === formData.vehicleType);
     if (rate && distanceKm > 0) {
       setFinancials({
@@ -73,8 +116,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     }
   }, [distanceKm, formData.vehicleType, rates]);
 
-  // Reset driver selection when vehicle type changes
+  // Reset driver selection when vehicle type changes (only if user changes it, not on load)
   useEffect(() => {
+    if (initialData && formData.vehicleType === initialData.vehicleType) return;
     setFormData(prev => ({ ...prev, driverId: '' }));
   }, [formData.vehicleType]);
 
@@ -137,7 +181,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
             <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
                 &larr; Voltar
             </button>
-            <h2 className="text-2xl font-bold text-gray-800">Nova Solicitação de Transporte</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+                {initialData ? 'Editar Solicitação' : 'Nova Solicitação de Transporte'}
+            </h2>
         </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -334,7 +380,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
 
         <div className="flex justify-end gap-3 pt-4 pb-12">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-            <Button type="submit">Cadastrar e Enviar</Button>
+            <Button type="submit">
+                {initialData ? 'Salvar Alterações' : 'Cadastrar e Enviar'}
+            </Button>
         </div>
       </form>
     </div>

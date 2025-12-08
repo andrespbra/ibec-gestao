@@ -91,6 +91,10 @@ export const DataManager = {
     }
   },
 
+  async updateRequest(item: TransportRequest) {
+    await this.update('requests', STORAGE_KEYS.REQUESTS, item);
+  },
+
   async addDriver(item: Driver) {
     await this.add('drivers', STORAGE_KEYS.DRIVERS, item);
   },
