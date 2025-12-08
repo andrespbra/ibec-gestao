@@ -94,7 +94,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
         // Optimization: If values match what we just loaded, don't re-run rate logic immediately
         // allowing the values set in the first useEffect to stick.
         // But if vehicle type changes, we MUST re-run.
-        const rate = rates.find(r => r.type === formData.vehicleType);
+        
         // Simple check: If vehicle type changed from initial, calc.
         if (initialData.vehicleType === formData.vehicleType && initialData.distanceKm === distanceKm) {
             return;
