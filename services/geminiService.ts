@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Helper to get API Key safely from either process.env (injected by Vite define) or import.meta.env (Vite native)
@@ -24,9 +25,9 @@ export interface RouteEstimate {
 }
 
 /**
- * Uses Gemini to estimate the distance between two addresses.
+ * Uses Gemini to estimate the distance between two addresses, optionally including waypoints.
  */
-export const estimateRoute = async (origin: string, destination: string): Promise<RouteEstimate> => {
+export const estimateRoute = async (origin: string, destination: string, waypoints: string[] = []): Promise<RouteEstimate> => {
   // Check if API Key is available specifically when the function is called
   if (!API_KEY) {
     console.error("Gemini API Key is missing.");
@@ -35,9 +36,12 @@ export const estimateRoute = async (origin: string, destination: string): Promis
   }
 
   try {
-    console.log(`Estimating route: ${origin} to ${destination}...`);
+    const hasWaypoints = waypoints.length > 0;
+    const stopsString = hasWaypoints ? ` passing through [${waypoints.join(', ')}] ` : ' ';
     
-    const prompt = `Calculate the estimated driving distance (in kilometers) and duration (in minutes) between "${origin}" and "${destination}".`;
+    console.log(`Estimating route: ${origin} ->${stopsString}-> ${destination}...`);
+    
+    const prompt = `Calculate the total estimated driving distance (in kilometers) and duration (in minutes) for a trip starting at "${origin}",${stopsString}and ending at "${destination}". Consider the most efficient driving route visiting these stops in order.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -47,8 +51,8 @@ export const estimateRoute = async (origin: string, destination: string): Promis
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            distanceKm: { type: Type.NUMBER, description: "The distance in kilometers." },
-            durationMins: { type: Type.NUMBER, description: "The duration in minutes." }
+            distanceKm: { type: Type.NUMBER, description: "The total distance in kilometers." },
+            durationMins: { type: Type.NUMBER, description: "The total duration in minutes." }
           },
           required: ["distanceKm", "durationMins"]
         }

@@ -20,16 +20,24 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
   const [vehicleFilter, setVehicleFilter] = useState<VehicleType | 'ALL'>('ALL');
   const [clientFilter, setClientFilter] = useState<string>('ALL');
 
+  // Helper to get the actual service date (Scheduled date takes precedence over Created date)
+  const getServiceDate = (req: TransportRequest): Date => {
+    return req.scheduledFor ? new Date(req.scheduledFor) : new Date(req.createdAt);
+  };
+
   // Logic to filter data
   const filteredData = useMemo(() => {
     return requests.filter(req => {
+      const serviceDate = getServiceDate(req);
+
       // Date Filter
       if (startDate) {
-        if (new Date(req.createdAt) < new Date(startDate)) return false;
+        if (serviceDate < new Date(startDate)) return false;
       }
       if (endDate) {
-        const reqDate = new Date(req.createdAt).toISOString().split('T')[0];
-        if (reqDate > endDate) return false;
+        // Compare just the date parts
+        const sDateStr = serviceDate.toISOString().split('T')[0];
+        if (sDateStr > endDate) return false;
       }
 
       // Status Filter
@@ -85,9 +93,9 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
     doc.setFont("helvetica", "normal");
 
     // Table
-    const tableColumn = ["Data", "Cliente", "Veículo", "Status", "Custo", "Receita", "Lucro"];
+    const tableColumn = ["Data Serviço", "Cliente", "Veículo", "Status", "Custo", "Receita", "Lucro"];
     const tableRows = filteredData.map(req => [
-        new Date(req.createdAt).toLocaleDateString('pt-BR'),
+        getServiceDate(req).toLocaleDateString('pt-BR'),
         req.clientName,
         req.vehicleType,
         req.status,
@@ -132,13 +140,13 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
         <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">Filtros de Pesquisa</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Input 
-            label="Data Inicial" 
+            label="Data Serviço Inicial" 
             type="date" 
             value={startDate} 
             onChange={e => setStartDate(e.target.value)}
           />
           <Input 
-            label="Data Final" 
+            label="Data Serviço Final" 
             type="date" 
             value={endDate} 
             onChange={e => setEndDate(e.target.value)}
@@ -213,7 +221,7 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
             <table className="w-full text-sm text-left text-gray-500">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
-                        <th className="px-6 py-3">Data</th>
+                        <th className="px-6 py-3">Data Serviço</th>
                         <th className="px-6 py-3">Cliente</th>
                         <th className="px-6 py-3">Veículo</th>
                         <th className="px-6 py-3">Status</th>
@@ -233,10 +241,12 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                     ) : (
                         filteredData.map(req => {
                           const profit = req.clientCharge - req.driverFee;
+                          const date = getServiceDate(req);
                           return (
                             <tr key={req.id} className="bg-white border-b hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    {new Date(req.createdAt).toLocaleDateString('pt-BR')}
+                                    {date.toLocaleDateString('pt-BR')}
+                                    {req.scheduledFor && <div className="text-xs text-blue-500 font-medium">{date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</div>}
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="font-medium text-gray-900">{req.clientName}</div>

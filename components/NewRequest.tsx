@@ -16,9 +16,6 @@ interface NewRequestProps {
 
 export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, initialData, onSubmit, onCancel }) => {
   // Initialize State directly from initialData if present.
-  // This prevents the useEffect auto-calculation from running immediately with empty values
-  // and overriding the saved prices.
-  
   const [formData, setFormData] = useState({
     invoiceNumber: initialData?.invoiceNumber || '',
     clientName: initialData?.clientName || '',
@@ -31,6 +28,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     contactOnSite: initialData?.contactOnSite || '',
     observations: initialData?.observations || ''
   });
+
+  // State for Waypoints (Intermediate Stops)
+  const [waypoints, setWaypoints] = useState<string[]>(initialData?.waypoints || []);
 
   const [distanceKm, setDistanceKm] = useState<number>(initialData?.distanceKm || 0);
   const [financials, setFinancials] = useState({ 
@@ -68,14 +68,10 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
   // Recalculate costs based on distance and vehicle type
   useEffect(() => {
     // PROTECT MANUALLY EDITED VALUES:
-    // If we have initialData, we only want to recalculate if the user *explicitly*
-    // changes the vehicle type or the distance.
     if (initialData) {
         const isVehicleSame = initialData.vehicleType === formData.vehicleType;
         const isDistanceSame = initialData.distanceKm === distanceKm;
         
-        // If critical fields match the saved data, DO NOT recalculate financials.
-        // This preserves the manual overrides saved in the database.
         if (isVehicleSame && isDistanceSame) {
             return;
         }
@@ -118,15 +114,35 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
       }
   };
 
+  const handleAddWaypoint = () => {
+    setWaypoints([...waypoints, '']);
+  };
+
+  const handleRemoveWaypoint = (index: number) => {
+    const newWaypoints = [...waypoints];
+    newWaypoints.splice(index, 1);
+    setWaypoints(newWaypoints);
+  };
+
+  const handleWaypointChange = (index: number, value: string) => {
+    const newWaypoints = [...waypoints];
+    newWaypoints[index] = value;
+    setWaypoints(newWaypoints);
+  };
+
   const handleEstimate = async () => {
     if (!formData.origin || !formData.destination) {
       setError("Preencha origem e destino para estimar.");
       return;
     }
+    // Filter out empty waypoints
+    const activeWaypoints = waypoints.filter(w => w.trim() !== '');
+
     setError(null);
     setIsEstimating(true);
     try {
-      const result = await estimateRoute(formData.origin, formData.destination);
+      // Updated service call to include waypoints
+      const result = await estimateRoute(formData.origin, formData.destination, activeWaypoints);
       if (result.distanceKm > 0) {
           setDistanceKm(result.distanceKm);
       } else {
@@ -148,6 +164,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     }
     onSubmit({
       ...formData,
+      waypoints: waypoints.filter(w => w.trim() !== ''),
       distanceKm,
       driverFee: financials.driverFee,
       clientCharge: financials.clientCharge
@@ -229,7 +246,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                         value={formData.scheduledFor}
                         onChange={e => setFormData({...formData, scheduledFor: e.target.value})}
                     />
-                    <p className="text-xs text-gray-500 mt-1">Deixe em branco para saída imediata.</p>
+                    <p className="text-xs text-gray-500 mt-1">Deixe em branco para saída imediata. (Usado como data do serviço no relatório)</p>
                 </div>
 
                  <div className="md:col-span-2 flex flex-col gap-1">
@@ -253,8 +270,40 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                     value={formData.origin}
                     onChange={e => setFormData({...formData, origin: e.target.value})}
                     required
-                    onBlur={() => { if(formData.origin && formData.destination && distanceKm === 0) handleEstimate() }}
                 />
+                
+                {/* Waypoints Section */}
+                {waypoints.map((point, index) => (
+                    <div key={index} className="flex gap-2 items-end">
+                        <div className="flex-1">
+                            <Input 
+                                label={`Parada Intermediária ${index + 1}`}
+                                placeholder="Endereço da parada" 
+                                value={point}
+                                onChange={e => handleWaypointChange(index, e.target.value)}
+                            />
+                        </div>
+                        <button 
+                            type="button" 
+                            onClick={() => handleRemoveWaypoint(index)}
+                            className="bg-red-50 text-red-500 p-2.5 rounded-md hover:bg-red-100 border border-red-200 mb-1"
+                            title="Remover parada"
+                        >
+                            <Icons.Trash />
+                        </button>
+                    </div>
+                ))}
+                
+                <div className="flex justify-start">
+                    <button 
+                        type="button" 
+                        onClick={handleAddWaypoint}
+                        className="text-sm text-primary hover:text-blue-700 flex items-center gap-1 font-medium"
+                    >
+                        <Icons.Plus /> Adicionar Parada / Endereço Extra
+                    </button>
+                </div>
+
                 <Input 
                     label="Endereço de Entrega (Destino)" 
                     placeholder="Rua, Número, Cidade" 
@@ -267,7 +316,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
 
             <div className="mt-4 flex flex-col sm:flex-row items-end gap-4">
                 <div className="flex-1 w-full">
-                     <label className="text-sm font-medium text-gray-700">Distância (KM)</label>
+                     <label className="text-sm font-medium text-gray-700">Distância Total (KM)</label>
                      <div className="flex gap-2">
                         <input 
                             type="number" 
@@ -279,7 +328,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                      </div>
                 </div>
                 <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating}>
-                    <Icons.Wand /> Calcular via IA
+                    <Icons.Wand /> Calcular Rota Completa (IA)
                 </Button>
             </div>
             {error && <p className="text-error text-sm mt-2 font-medium bg-red-50 p-2 rounded">{error}</p>}

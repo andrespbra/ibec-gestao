@@ -1,3 +1,4 @@
+
 -- Enable UUID extension (optional but good practice)
 create extension if not exists "uuid-ossp";
 
@@ -18,7 +19,8 @@ create table if not exists requests (
   "scheduledFor" text,
   "activityType" text,
   "contactOnSite" text,
-  "observations" text
+  "observations" text,
+  "waypoints" jsonb
 );
 
 -- 2. Table: drivers
@@ -101,6 +103,11 @@ begin
   -- Add 'observations' to requests
   if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='observations') then
     alter table requests add column "observations" text;
+  end if;
+  
+  -- Add 'waypoints' to requests (JSONB for efficient storage of arrays)
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='waypoints') then
+    alter table requests add column "waypoints" jsonb;
   end if;
 
   -- Add 'plate' to drivers

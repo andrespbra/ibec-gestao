@@ -22,6 +22,7 @@ export interface TransportRequest {
   activityType?: ActivityType;
   contactOnSite?: string;
   observations?: string;
+  waypoints?: string[]; // Intermediate addresses
 }
 
 export interface VehicleRate {
