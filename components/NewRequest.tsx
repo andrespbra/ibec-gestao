@@ -80,34 +80,32 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
   }, [initialData, existingRequests]);
 
   // Recalculate costs based on distance and vehicle type
-  // Note: In Edit mode, this will run on mount because distanceKm is set. 
-  // If you want to preserve exact manual prices from DB, you might need extra logic, 
-  // but usually re-calculating on load with current rates is acceptable or preferred.
-  // To strictly preserve DB values on load, we could add a check.
   useEffect(() => {
-    // Only calculate if we are NOT in the initial load of edit mode 
-    // (Simulated by checking if financials are 0 or if user changed something)
-    // For simplicity, we allow recalculation but if the user manually overrides in the UI, it stays.
-    
-    // However, to prevent overwriting DB values on open:
-    if (initialData && financials.driverFee !== 0 && financials.clientCharge !== 0) {
-        // Optimization: If values match what we just loaded, don't re-run rate logic immediately
-        // allowing the values set in the first useEffect to stick.
-        // But if vehicle type changes, we MUST re-run.
-        
-        // Simple check: If vehicle type changed from initial, calc.
-        if (initialData.vehicleType === formData.vehicleType && initialData.distanceKm === distanceKm) {
+    // PRESERVE INITIAL VALUES ON LOAD:
+    // If we are editing, and the current values match the initial values, 
+    // do NOT recalculate. This allows manual price overrides from the DB to persist.
+    if (initialData) {
+        const isUnchanged = 
+            initialData.vehicleType === formData.vehicleType && 
+            initialData.distanceKm === distanceKm;
+            
+        // If critical fields haven't changed, and we have valid financials loaded, skip auto-calc
+        if (isUnchanged && financials.driverFee !== 0) {
             return;
         }
     }
 
     const rate = rates.find(r => r.type === formData.vehicleType);
-    if (rate && distanceKm > 0) {
+    
+    // If no rate found, stop (fixes potential TS unused var issue if strictly typed logic fails)
+    if (!rate) return;
+
+    if (distanceKm > 0) {
       setFinancials({
         driverFee: parseFloat((rate.baseFee + (distanceKm * rate.costPerKm)).toFixed(2)),
         clientCharge: parseFloat((rate.baseFee + (distanceKm * rate.chargePerKm)).toFixed(2))
       });
-    } else if (rate) {
+    } else {
         // Minimum/Base fee showing if distance is 0
         setFinancials({
             driverFee: rate.baseFee,
