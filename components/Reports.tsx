@@ -64,8 +64,9 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
     
     // Header
     doc.setFontSize(18);
-    doc.setTextColor(33, 150, 243); // Primary Blue
-    doc.text('Relatório Gerencial - LogiTrack AI', 14, 22);
+    // IBEC Purple
+    doc.setTextColor(65, 42, 156); 
+    doc.text('Relatório Gerencial - CRM IBEC', 14, 22);
     
     doc.setFontSize(10);
     doc.setTextColor(100);
@@ -109,12 +110,12 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
         body: tableRows,
         startY: 75,
         theme: 'grid',
-        headStyles: { fillColor: [33, 150, 243], fontSize: 9 },
+        headStyles: { fillColor: [65, 42, 156], fontSize: 9 }, // IBEC Purple
         bodyStyles: { fontSize: 8 },
         footStyles: { fontSize: 9, fillColor: [240, 240, 240], textColor: 50 },
     });
 
-    doc.save(`relatorio_logitrack_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`relatorio_ibec_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const handleDelete = (id: string, invoice: string) => {
@@ -187,13 +188,13 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 border-l-4 border-l-blue-500">
+        <Card className="p-5 border-l-4 border-l-primary">
           <span className="text-gray-500 text-xs font-bold uppercase">Receita Total</span>
           <span className="text-2xl font-bold text-gray-800 block mt-1">R$ {totalRevenue.toFixed(2)}</span>
           <span className="text-xs text-gray-400">Valor cobrado dos clientes</span>
         </Card>
 
-        <Card className="p-5 border-l-4 border-l-orange-500">
+        <Card className="p-5 border-l-4 border-l-secondary">
           <span className="text-gray-500 text-xs font-bold uppercase">Custo Motoristas</span>
           <span className="text-2xl font-bold text-gray-800 block mt-1">R$ {totalCost.toFixed(2)}</span>
           <span className="text-xs text-gray-400">Valor repassado aos parceiros</span>

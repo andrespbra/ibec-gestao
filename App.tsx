@@ -92,7 +92,7 @@ const App: React.FC = () => {
                 const activity = newRequest.activityType ? activityMap[newRequest.activityType] : 'Entregar';
 
                 const message = 
-`*🚚 Nova Solicitação LogiTrack!*
+`*🚚 Nova Solicitação CRM IBEC!*
 
 👤 *Motorista:* ${driver.name}
 📦 *Nota:* ${newRequest.invoiceNumber}
@@ -227,27 +227,28 @@ const App: React.FC = () => {
   const canAccessSettings = currentUser.role === 'ADMIN';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-surface flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <div className="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center gap-2 font-bold text-primary text-xl">
-             <Icons.Truck /> LogiTrack
+      <div className="md:hidden bg-primary shadow-lg p-4 flex justify-between items-center sticky top-0 z-10 text-white">
+        <div className="flex items-center gap-2 font-bold text-xl">
+             <Icons.Truck /> CRM IBEC
         </div>
         <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">{currentUser.name}</span>
-            <button onClick={() => setCurrentUser(null)} className="text-gray-400">
-                <Icons.Home /> {/* Using generic icon for logout in mobile for now */}
+            <span className="text-xs text-blue-100">{currentUser.name}</span>
+            <button onClick={() => setCurrentUser(null)} className="text-blue-100 hover:text-white">
+                <Icons.Home />
             </button>
         </div>
       </div>
 
       {/* Sidebar Navigation */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0 h-screen">
-        <div className="p-6 border-b border-gray-100">
-             <div className="flex items-center gap-2 font-bold text-primary text-2xl">
-                 <Icons.Truck /> LogiTrack AI
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0 h-screen shadow-sm">
+        <div className="p-6 border-b border-gray-100 flex flex-col items-center">
+             {/* Logo / Brand */}
+             <div className="flex items-center gap-2 font-extrabold text-primary text-2xl tracking-tight">
+                 <Icons.Truck /> CRM IBEC
              </div>
-             <div className="mt-2 text-xs text-gray-500 uppercase font-semibold tracking-wider">
+             <div className="mt-2 text-[10px] text-secondary uppercase font-bold tracking-widest bg-orange-50 px-2 py-0.5 rounded-full">
                 {currentUser.role}
              </div>
         </div>
@@ -257,7 +258,11 @@ const App: React.FC = () => {
                     setCurrentView('DASHBOARD');
                     setEditingRequest(undefined);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'DASHBOARD' || (currentView === 'NEW_REQUEST' && !editingRequest) ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                    currentView === 'DASHBOARD' || (currentView === 'NEW_REQUEST' && !editingRequest) 
+                    ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                }`}
             >
                 <Icons.Home /> Dashboard
             </button>
@@ -268,7 +273,11 @@ const App: React.FC = () => {
                         setCurrentView('REPORTS');
                         setEditingRequest(undefined);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'REPORTS' || (currentView === 'NEW_REQUEST' && editingRequest) ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        currentView === 'REPORTS' || (currentView === 'NEW_REQUEST' && editingRequest) 
+                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                    }`}
                 >
                     <Icons.BarChart /> Relatórios
                 </button>
@@ -280,7 +289,11 @@ const App: React.FC = () => {
                         setCurrentView('DRIVERS');
                         setEditingDriver(undefined);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'DRIVERS' || currentView === 'NEW_DRIVER' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        currentView === 'DRIVERS' || currentView === 'NEW_DRIVER' 
+                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                    }`}
                 >
                     <Icons.Users /> Motoristas
                 </button>
@@ -292,7 +305,11 @@ const App: React.FC = () => {
                         setCurrentView('CLIENTS');
                         setEditingClient(undefined);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'CLIENTS' || currentView === 'NEW_CLIENT' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        currentView === 'CLIENTS' || currentView === 'NEW_CLIENT' 
+                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                    }`}
                 >
                     <Icons.Building /> Clientes
                 </button>
@@ -301,7 +318,11 @@ const App: React.FC = () => {
             {canAccessPayroll && (
                 <button 
                     onClick={() => setCurrentView('PAYROLL')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'PAYROLL' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        currentView === 'PAYROLL' 
+                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                    }`}
                 >
                     <Icons.DollarSign /> Folha Pgto.
                 </button>
@@ -310,7 +331,11 @@ const App: React.FC = () => {
             {canAccessSettings && (
                 <button 
                     onClick={() => setCurrentView('SETTINGS')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'SETTINGS' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        currentView === 'SETTINGS' 
+                        ? 'bg-primary text-white shadow-md shadow-primary/20' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                    }`}
                 >
                     <Icons.Settings /> Configurações
                 </button>
@@ -319,13 +344,13 @@ const App: React.FC = () => {
         <div className="p-4 border-t border-gray-100">
             <button 
                 onClick={() => setCurrentUser(null)}
-                className="w-full flex items-center gap-2 text-gray-500 hover:text-red-500 transition-colors mb-4 pl-2"
+                className="w-full flex items-center gap-2 text-gray-500 hover:text-secondary transition-colors mb-4 pl-2"
             >
                 <span className="text-sm font-medium">Sair do Sistema</span>
             </button>
 
             <div className="flex justify-between items-center text-xs text-gray-400">
-                <span>v3.0 Secure</span>
+                <span>v3.1 CRM</span>
                 {DataManager.isOnline ? (
                     <span className="flex items-center gap-1 text-green-600 font-medium">
                         <div className="w-2 h-2 rounded-full bg-green-500"></div> Online
@@ -340,22 +365,22 @@ const App: React.FC = () => {
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 z-20">
-            <button onClick={() => setCurrentView('DASHBOARD')} className={`flex flex-col items-center text-xs ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-500'}`}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+            <button onClick={() => setCurrentView('DASHBOARD')} className={`flex flex-col items-center text-xs ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-400'}`}>
                 <Icons.Home /> <span className="mt-1">Início</span>
             </button>
             {canAccessReports && (
-                <button onClick={() => setCurrentView('REPORTS')} className={`flex flex-col items-center text-xs ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-500'}`}>
+                <button onClick={() => setCurrentView('REPORTS')} className={`flex flex-col items-center text-xs ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-400'}`}>
                     <Icons.BarChart /> <span className="mt-1">Relat.</span>
                 </button>
             )}
             {canAccessDrivers && (
-                <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex flex-col items-center text-xs ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-500'}`}>
+                <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex flex-col items-center text-xs ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-400'}`}>
                     <Icons.Users /> <span className="mt-1">Mot.</span>
                 </button>
             )}
              {canAccessPayroll && (
-                <button onClick={() => setCurrentView('PAYROLL')} className={`flex flex-col items-center text-xs ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-500'}`}>
+                <button onClick={() => setCurrentView('PAYROLL')} className={`flex flex-col items-center text-xs ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-400'}`}>
                     <Icons.DollarSign /> <span className="mt-1">Folha</span>
                 </button>
             )}

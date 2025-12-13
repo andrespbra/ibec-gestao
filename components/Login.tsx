@@ -115,14 +115,27 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8 shadow-xl">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-full bg-surface">
+         <div className="absolute top-[-10%] right-[-5%] w-64 h-64 bg-secondary/10 rounded-full blur-3xl"></div>
+         <div className="absolute bottom-[-10%] left-[-5%] w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
+      </div>
+
+      <Card className="w-full max-w-md p-8 shadow-2xl relative z-10 border-t-4 border-primary">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-4">
-            <Icons.Truck />
+          {/* Logo Placeholder - User can replace src with actual logo URL or file */}
+          <div className="mb-4 flex items-center justify-center">
+             <div className="bg-white p-2 rounded-lg">
+                {/* Fallback to stylized text if image fails or isn't present, but using <img> structure as requested */}
+                <div className="flex flex-col items-center">
+                    <Icons.Truck /> 
+                    {/* If you have the file, use: <img src="/logo.png" alt="CRM IBEC" className="h-16" /> */}
+                </div>
+             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">LogiTrack AI</h1>
-          <p className="text-gray-500 text-sm">Acesse sua conta para continuar</p>
+          <h1 className="text-3xl font-extrabold text-primary tracking-tight">CRM IBEC</h1>
+          <p className="text-gray-500 text-sm mt-1">Gestão Logística Inteligente</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -133,6 +146,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             onChange={(e) => setUsername(e.target.value)}
             required
             autoFocus
+            className="border-gray-300 focus:border-primary focus:ring-primary"
           />
           
           <Input 
@@ -142,22 +156,26 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="border-gray-300 focus:border-primary focus:ring-primary"
           />
 
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100">
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
               {error}
             </div>
           )}
 
-          <Button type="submit" className="w-full py-3" isLoading={isLoading}>
-            Entrar no Sistema
+          <Button type="submit" className="w-full py-3 bg-primary hover:bg-purple-800 text-white font-bold shadow-lg shadow-primary/30 transition-all transform hover:scale-[1.01]" isLoading={isLoading}>
+            ACESSAR SISTEMA
           </Button>
           
-          <div className="mt-6 text-center text-xs text-gray-400">
-             <p>Acessos Padrão (Demo):</p>
-             <p>admin / admin</p>
-             <p>edna / 123 (Troca de senha)</p>
+          <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+             <p className="text-xs text-gray-400 mb-2 font-medium">DADOS DE ACESSO (DEMO)</p>
+             <div className="flex justify-center gap-4 text-xs text-gray-500">
+                 <span className="bg-gray-100 px-2 py-1 rounded">admin / admin</span>
+                 <span className="bg-gray-100 px-2 py-1 rounded">edna / 123</span>
+             </div>
           </div>
         </form>
       </Card>
