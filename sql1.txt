@@ -70,14 +70,15 @@ create table if not exists rates (
   "baseFee" float
 );
 
--- 6. Table: users (New)
+-- 6. Table: users
 create table if not exists users (
   "id" text primary key,
   "username" text unique,
   "password" text, -- Plain text for demo, use hash in prod
   "role" text, -- ADMIN, OPERATIONAL, CLIENT
   "clientId" text, -- foreign key to clients if role is CLIENT
-  "name" text
+  "name" text,
+  "mustChangePassword" boolean default false
 );
 
 -- 7. Insert Default Rates (prevent empty config)
@@ -90,10 +91,11 @@ values
 on conflict ("type") do nothing;
 
 -- 8. Insert Default Users
-insert into users ("id", "username", "password", "role", "name")
+insert into users ("id", "username", "password", "role", "name", "mustChangePassword")
 values 
-  ('1', 'admin', 'admin', 'ADMIN', 'Administrador'),
-  ('2', 'operacional', '123', 'OPERATIONAL', 'Operador Logístico')
+  ('1', 'admin', 'admin', 'ADMIN', 'Administrador', false),
+  ('2', 'operacional', '123', 'OPERATIONAL', 'Operador Logístico', false),
+  ('4', 'edna', '123', 'ADMIN', 'Edna (Admin)', true)
 on conflict ("id") do nothing;
 
 -- 9. SAFELY ADD NEW COLUMNS (Migration Logic)
@@ -122,6 +124,11 @@ begin
   -- Add 'waypoints' to requests (JSONB for efficient storage of arrays)
   if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='waypoints') then
     alter table requests add column "waypoints" jsonb;
+  end if;
+  
+  -- Add 'mustChangePassword' to users
+  if not exists (select 1 from information_schema.columns where table_name='users' and column_name='mustChangePassword') then
+    alter table users add column "mustChangePassword" boolean default false;
   end if;
 
   -- Add 'plate' to drivers

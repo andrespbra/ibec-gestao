@@ -14,6 +14,8 @@ export interface User {
   role: UserRole;
   clientId?: string; // If role is CLIENT, links to specific client
   name: string;
+  password?: string; // Optional in interface for security, but used in management
+  mustChangePassword?: boolean;
 }
 
 export interface TransportRequest {

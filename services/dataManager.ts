@@ -8,47 +8,93 @@ const STORAGE_KEYS = {
   REQUESTS: 'logitrack_requests',
   DRIVERS: 'logitrack_drivers',
   CLIENTS: 'logitrack_clients',
-  EXPENSES: 'logitrack_expenses'
+  EXPENSES: 'logitrack_expenses',
+  USERS: 'logitrack_users'
 };
+
+const INITIAL_USERS: User[] = [
+    { id: '1', username: 'admin', password: 'admin', role: 'ADMIN', name: 'Administrador', mustChangePassword: false },
+    { id: '2', username: 'operacional', password: '123', role: 'OPERATIONAL', name: 'Operador Logístico', mustChangePassword: false },
+    { id: '3', username: 'cliente', password: '123', role: 'CLIENT', name: 'Cliente Demo', clientId: 'client_demo_id', mustChangePassword: false },
+    { id: '4', username: 'edna', password: '123', role: 'ADMIN', name: 'Edna (Admin)', mustChangePassword: true }
+];
 
 export const DataManager = {
   isOnline: isSupabaseConfigured,
+
+  async fetchUsers(): Promise<User[]> {
+      if (this.isOnline && supabase) {
+          const { data } = await supabase.from('users').select('*');
+          if (data && data.length > 0) return data as User[];
+      }
+      
+      const stored = localStorage.getItem(STORAGE_KEYS.USERS);
+      if (!stored) {
+          // Initialize default users if empty
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+          return INITIAL_USERS;
+      }
+      return JSON.parse(stored);
+  },
 
   async authenticate(username: string, password: string): Promise<User | null> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Hardcoded credentials for Demo
-    if (username === 'admin' && password === 'admin') {
-      return {
-        id: 'admin_1',
-        username: 'admin',
-        role: 'ADMIN',
-        name: 'Administrador'
-      };
-    }
+    const users = await this.fetchUsers();
+    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+    
+    return user || null;
+  },
 
-    if (username === 'operacional' && password === '123') {
-      return {
-        id: 'ops_1',
-        username: 'operacional',
-        role: 'OPERATIONAL',
-        name: 'Operador Logístico'
-      };
-    }
+  async changePassword(userId: string, newPassword: string): Promise<boolean> {
+      const users = await this.fetchUsers();
+      const updatedUsers = users.map(u => {
+          if (u.id === userId) {
+              return { ...u, password: newPassword, mustChangePassword: false };
+          }
+          return u;
+      });
 
-    if (username === 'cliente' && password === '123') {
-      // In a real app, you would fetch the linked client profile
-      return {
-        id: 'client_1',
-        username: 'cliente',
-        role: 'CLIENT',
-        name: 'Cliente Demo',
-        clientId: 'client_demo_id' 
-      };
-    }
+      await this.saveUsers(updatedUsers);
+      return true;
+  },
 
-    return null;
+  async saveUsers(users: User[]) {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      if (this.isOnline && supabase) {
+          // In a real scenario, you'd iterate upsert or use a specific admin endpoint
+          // For this demo, we assume Supabase mirrors local changes individually
+          for (const u of users) {
+             await supabase.from('users').upsert(u);
+          }
+      }
+  },
+
+  async addUser(user: User) {
+      const users = await this.fetchUsers();
+      // Check duplicate
+      if (users.find(u => u.username === user.username)) {
+          throw new Error('Nome de usuário já existe');
+      }
+      const newUsers = [...users, user];
+      await this.saveUsers(newUsers);
+  },
+
+  async updateUser(user: User) {
+      const users = await this.fetchUsers();
+      const newUsers = users.map(u => u.id === user.id ? user : u);
+      await this.saveUsers(newUsers);
+  },
+
+  async deleteUser(id: string) {
+      const users = await this.fetchUsers();
+      const newUsers = users.filter(u => u.id !== id);
+      await this.saveUsers(newUsers);
+      
+      if (this.isOnline && supabase) {
+          await supabase.from('users').delete().eq('id', id);
+      }
   },
 
   async fetchAllData() {
