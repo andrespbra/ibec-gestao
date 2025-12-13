@@ -3,7 +3,18 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize the SDK with the API Key from environment variables.
 // The API key must be obtained exclusively from process.env.API_KEY.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let ai: GoogleGenAI | null = null;
+
+try {
+  // Check if key exists and is not empty to avoid "API key is missing" error on initialization
+  if (process.env.API_KEY && process.env.API_KEY.length > 0) {
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  } else {
+    console.warn("Gemini API Key is missing. AI features will be disabled.");
+  }
+} catch (error) {
+  console.error("Error initializing Gemini SDK:", error);
+}
 
 export interface RouteEstimate {
   distanceKm: number;
@@ -14,6 +25,12 @@ export interface RouteEstimate {
  * Uses Gemini to estimate the distance between two addresses, optionally including waypoints.
  */
 export const estimateRoute = async (origin: string, destination: string, waypoints: string[] = []): Promise<RouteEstimate> => {
+  if (!ai) {
+    // Graceful fallback if AI is not initialized
+    console.warn("Gemini AI not initialized. Returning manual input requirement.");
+    throw new Error("Chave de API do Gemini não configurada. Por favor, insira a distância manualmente.");
+  }
+
   try {
     const hasWaypoints = waypoints.length > 0;
     const stopsString = hasWaypoints ? ` passing through [${waypoints.join(', ')}] ` : ' ';
