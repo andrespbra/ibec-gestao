@@ -1,23 +1,9 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Helper to get API Key safely from either process.env (injected by Vite define) or import.meta.env (Vite native)
-const getApiKey = (): string => {
-  // First try process.env (polyfilled)
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY;
-  }
-  // Fallback to Vite native env
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_API_KEY) {
-    return (import.meta as any).env.VITE_API_KEY;
-  }
-  return '';
-};
-
-const API_KEY = getApiKey();
-
-// Initialize the SDK with the retrieved API Key
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// Initialize the SDK with the API Key from environment variables.
+// The API key must be obtained exclusively from process.env.API_KEY.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export interface RouteEstimate {
   distanceKm: number;
@@ -28,13 +14,6 @@ export interface RouteEstimate {
  * Uses Gemini to estimate the distance between two addresses, optionally including waypoints.
  */
 export const estimateRoute = async (origin: string, destination: string, waypoints: string[] = []): Promise<RouteEstimate> => {
-  // Check if API Key is available specifically when the function is called
-  if (!API_KEY) {
-    console.error("Gemini API Key is missing.");
-    console.error("Please create a .env file in the root directory with: VITE_API_KEY=your_key_here");
-    throw new Error("Chave de API não encontrada. Crie um arquivo .env na raiz com VITE_API_KEY=...");
-  }
-
   try {
     const hasWaypoints = waypoints.length > 0;
     const stopsString = hasWaypoints ? ` passing through [${waypoints.join(', ')}] ` : ' ';

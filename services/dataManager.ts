@@ -1,6 +1,6 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { TransportRequest, Driver, Client, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus } from '../types';
+import { TransportRequest, Driver, Client, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User } from '../types';
 
 // Keys for LocalStorage
 const STORAGE_KEYS = {
@@ -13,6 +13,43 @@ const STORAGE_KEYS = {
 
 export const DataManager = {
   isOnline: isSupabaseConfigured,
+
+  async authenticate(username: string, password: string): Promise<User | null> {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Hardcoded credentials for Demo
+    if (username === 'admin' && password === 'admin') {
+      return {
+        id: 'admin_1',
+        username: 'admin',
+        role: 'ADMIN',
+        name: 'Administrador'
+      };
+    }
+
+    if (username === 'operacional' && password === '123') {
+      return {
+        id: 'ops_1',
+        username: 'operacional',
+        role: 'OPERATIONAL',
+        name: 'Operador Logístico'
+      };
+    }
+
+    if (username === 'cliente' && password === '123') {
+      // In a real app, you would fetch the linked client profile
+      return {
+        id: 'client_1',
+        username: 'cliente',
+        role: 'CLIENT',
+        name: 'Cliente Demo',
+        clientId: 'client_demo_id' 
+      };
+    }
+
+    return null;
+  },
 
   async fetchAllData() {
     if (this.isOnline && supabase) {

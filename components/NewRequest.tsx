@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { TransportRequest, VehicleType, VehicleRate, Driver, Client, ActivityType } from '../types';
+import { TransportRequest, VehicleType, VehicleRate, Driver, Client, ActivityType, User } from '../types';
 import { Button, Input, Card, Icons, Select } from './Components';
 import { estimateRoute } from '../services/geminiService';
 
@@ -10,11 +10,12 @@ interface NewRequestProps {
   clients: Client[];
   existingRequests: TransportRequest[];
   initialData?: TransportRequest; // Added for editing
+  currentUser: User;
   onSubmit: (request: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => void;
   onCancel: () => void;
 }
 
-export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, initialData, onSubmit, onCancel }) => {
+export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, initialData, currentUser, onSubmit, onCancel }) => {
   // Initialize State directly from initialData if present.
   const [formData, setFormData] = useState({
     invoiceNumber: initialData?.invoiceNumber || '',
@@ -62,8 +63,21 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
         const formattedInvoice = `${prefix}${String(nextNumber).padStart(3, '0')}`;
         
         setFormData(prev => ({ ...prev, invoiceNumber: formattedInvoice }));
+
+        // Auto-select client if user is Client role
+        if (currentUser.role === 'CLIENT' && currentUser.clientId) {
+            const myClient = clients.find(c => c.id === currentUser.clientId);
+            if (myClient) {
+                setFormData(prev => ({
+                    ...prev,
+                    clientName: myClient.name,
+                    origin: myClient.address,
+                    contactOnSite: myClient.contactName
+                }));
+            }
+        }
     }
-  }, [initialData, existingRequests]);
+  }, [initialData, existingRequests, currentUser, clients]);
 
   // Recalculate costs based on distance and vehicle type
   useEffect(() => {
@@ -158,10 +172,10 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!distanceKm) {
-        setError("A distância deve ser maior que 0.");
-        return;
-    }
+    // Clients don't see distance field if it wasn't auto calculated, so we might need to handle 0 distance.
+    // However, usually they just submit the request and Ops fills the rest.
+    // For now we assume if they don't calculate, it's 0.
+    
     onSubmit({
       ...formData,
       waypoints: waypoints.filter(w => w.trim() !== ''),
@@ -173,6 +187,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
 
   const availableDrivers = drivers.filter(d => d.vehicleType === formData.vehicleType);
   const profitMargin = financials.clientCharge - financials.driverFee;
+
+  // Render Logic
+  const isClient = currentUser.role === 'CLIENT';
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -197,19 +214,29 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                     required
                 />
                 
-                <div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium text-gray-700">Selecionar Cliente (Opcional)</label>
-                    <select
-                        className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
-                        onChange={handleClientSelect}
-                        defaultValue=""
-                    >
-                        <option value="" disabled>Escolha um cliente cadastrado...</option>
-                        {clients.map(c => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
-                </div>
+                {/* Client Selection - Locked for Clients */}
+                {!isClient ? (
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-gray-700">Selecionar Cliente (Opcional)</label>
+                        <select
+                            className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                            onChange={handleClientSelect}
+                            defaultValue=""
+                        >
+                            <option value="" disabled>Escolha um cliente cadastrado...</option>
+                            {clients.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                ) : (
+                    <Input 
+                        label="Sua Empresa" 
+                        value={formData.clientName}
+                        disabled
+                        className="bg-gray-100"
+                    />
+                )}
 
                 <div className="md:col-span-2">
                     <Input 
@@ -217,8 +244,25 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                         placeholder="Nome da empresa ou pessoa" 
                         value={formData.clientName}
                         onChange={e => setFormData({...formData, clientName: e.target.value})}
-                        required
+                        required={isClient} // Mandatory for client
+                        disabled={isClient} // Usually Client Name is the billing entity, so for a Client User this is fixed to themselves. Wait, "Destinatário" might be different. 
+                        // Prompt says: "Cliente (só aparece ele mesmo), Cliente / Destinatario"
+                        // Interpretation: The "Client" field in DB is the payer. The "Recipient" is who receives.
+                        // In the current form, we have `clientName` which maps to the payer.
+                        // We need to allow them to type the Recipient?
+                        // Actually, looking at previous code, `clientName` was used for the entity being served.
+                        // Let's assume for Client User, `clientName` is FIXED to their company name, 
+                        // but maybe we need a "Recipient" field? 
+                        // The prompt lists: "Cliente (só aparece ele mesmo), Cliente / Destinatario". 
+                        // This implies TWO fields. But `TransportRequest` only has `clientName`. 
+                        // I will use `observations` or `destination` for recipient details if not adding a new field, 
+                        // OR I will simply let `clientName` be editable but pre-filled? 
+                        // "Cliente (só aparece ele mesmo)" -> This refers to the payer.
+                        // "Cliente / Destinatario" -> This is likely the target.
+                        // Current `TransportRequest` has `clientName`. Let's assume `clientName` is the Payer.
+                        // I will keep `clientName` locked for Client Role as the Payer. 
                     />
+                     {isClient && <p className="text-xs text-gray-500">Faturado para: {formData.clientName}</p>}
                 </div>
 
                 <Input 
@@ -246,14 +290,14 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                         value={formData.scheduledFor}
                         onChange={e => setFormData({...formData, scheduledFor: e.target.value})}
                     />
-                    <p className="text-xs text-gray-500 mt-1">Deixe em branco para saída imediata. (Usado como data do serviço no relatório)</p>
+                    <p className="text-xs text-gray-500 mt-1">Deixe em branco para saída imediata.</p>
                 </div>
 
                  <div className="md:col-span-2 flex flex-col gap-1">
                     <label className="text-sm font-medium text-gray-700">Observações</label>
                     <textarea 
                         className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent min-h-[80px]"
-                        placeholder="Instruções especiais, referência de endereço, etc."
+                        placeholder="Instruções especiais, referência de endereço, destinatário final, etc."
                         value={formData.observations}
                         onChange={e => setFormData({...formData, observations: e.target.value})}
                     />
@@ -262,7 +306,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
         </Card>
 
         <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Rota e Distância</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Rota</h3>
             <div className="grid grid-cols-1 gap-4">
                 <Input 
                     label="Endereço de Coleta (Origem)" 
@@ -314,105 +358,128 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                 />
             </div>
 
+            {/* AI Estimation - Visible to all, but price hidden for Client */}
             <div className="mt-4 flex flex-col sm:flex-row items-end gap-4">
-                <div className="flex-1 w-full">
-                     <label className="text-sm font-medium text-gray-700">Distância Total (KM)</label>
-                     <div className="flex gap-2">
-                        <input 
-                            type="number" 
-                            step="0.1" 
-                            className="border border-gray-300 rounded-md px-3 py-2 w-full font-bold text-gray-800"
-                            value={distanceKm}
-                            onChange={e => setDistanceKm(parseFloat(e.target.value) || 0)}
-                        />
-                     </div>
-                </div>
+                {!isClient && (
+                    <div className="flex-1 w-full">
+                         <label className="text-sm font-medium text-gray-700">Distância Total (KM)</label>
+                         <div className="flex gap-2">
+                            <input 
+                                type="number" 
+                                step="0.1" 
+                                className="border border-gray-300 rounded-md px-3 py-2 w-full font-bold text-gray-800"
+                                value={distanceKm}
+                                onChange={e => setDistanceKm(parseFloat(e.target.value) || 0)}
+                            />
+                         </div>
+                    </div>
+                )}
                 <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating}>
-                    <Icons.Wand /> Calcular Rota Completa (IA)
+                    <Icons.Wand /> {isClient ? 'Calcular Rota Automática' : 'Calcular Rota Completa (IA)'}
                 </Button>
             </div>
             {error && <p className="text-error text-sm mt-2 font-medium bg-red-50 p-2 rounded">{error}</p>}
         </Card>
 
-        <Card className="p-6 bg-blue-50 border-blue-100">
-            <h3 className="text-lg font-semibold text-blue-900 mb-4 border-b border-blue-200 pb-2">Veículo e Valores</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de Veículo</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {rates.map(rate => (
-                                <button
-                                    type="button"
-                                    key={rate.type}
-                                    onClick={() => setFormData({...formData, vehicleType: rate.type})}
-                                    className={`px-3 py-2 text-sm rounded-md border text-left transition-all ${
-                                        formData.vehicleType === rate.type 
-                                        ? 'bg-primary text-white border-primary shadow-md' 
-                                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                >
-                                    {rate.label}
-                                </button>
-                            ))}
+        {/* FINANCIALS & VEHICLE - HIDDEN OR REDUCED FOR CLIENT */}
+        {!isClient ? (
+            <Card className="p-6 bg-blue-50 border-blue-100">
+                <h3 className="text-lg font-semibold text-blue-900 mb-4 border-b border-blue-200 pb-2">Veículo e Valores</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 block mb-1">Tipo de Veículo</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {rates.map(rate => (
+                                    <button
+                                        type="button"
+                                        key={rate.type}
+                                        onClick={() => setFormData({...formData, vehicleType: rate.type})}
+                                        className={`px-3 py-2 text-sm rounded-md border text-left transition-all ${
+                                            formData.vehicleType === rate.type 
+                                            ? 'bg-primary text-white border-primary shadow-md' 
+                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {rate.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <Select 
+                                label="Motorista Responsável (Opcional)"
+                                value={formData.driverId}
+                                onChange={e => setFormData({...formData, driverId: e.target.value})}
+                            >
+                                <option value="">Selecione um motorista...</option>
+                                {availableDrivers.map(driver => (
+                                    <option key={driver.id} value={driver.id}>
+                                        {driver.name}
+                                    </option>
+                                ))}
+                            </Select>
+                            {formData.driverId && (
+                                <p className="text-xs text-green-600 mt-1">
+                                    * Um link de WhatsApp será gerado para o motorista ao salvar.
+                                </p>
+                            )}
                         </div>
                     </div>
 
-                    <div>
-                        <Select 
-                            label="Motorista Responsável (Opcional)"
-                            value={formData.driverId}
-                            onChange={e => setFormData({...formData, driverId: e.target.value})}
+                    <div className="bg-white p-4 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center space-y-4">
+                        <div className="grid grid-cols-1 gap-3">
+                            <Input 
+                                label="Valor Pagamento Motorista (R$)"
+                                type="number"
+                                step="0.01"
+                                value={financials.driverFee}
+                                onChange={e => setFinancials({...financials, driverFee: parseFloat(e.target.value) || 0})}
+                            />
+                            <Input 
+                                label="Valor Cobrado Cliente (R$)"
+                                type="number"
+                                step="0.01"
+                                value={financials.clientCharge}
+                                onChange={e => setFinancials({...financials, clientCharge: parseFloat(e.target.value) || 0})}
+                            />
+                        </div>
+                        <div className="text-xs text-gray-400 text-right pt-2 border-t mt-2 flex justify-between items-center">
+                            <span>Margem Prevista:</span>
+                            <span className={`font-bold text-sm ${profitMargin >= 0 ? "text-green-600" : "text-red-500"}`}>
+                                R$ {profitMargin.toFixed(2)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+        ) : (
+             <Card className="p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Preferência de Veículo</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {rates.map(rate => (
+                        <button
+                            type="button"
+                            key={rate.type}
+                            onClick={() => setFormData({...formData, vehicleType: rate.type})}
+                            className={`px-3 py-3 text-sm rounded-md border text-center transition-all ${
+                                formData.vehicleType === rate.type 
+                                ? 'bg-primary text-white border-primary shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
                         >
-                            <option value="">Selecione um motorista...</option>
-                            {availableDrivers.map(driver => (
-                                <option key={driver.id} value={driver.id}>
-                                    {driver.name}
-                                </option>
-                            ))}
-                        </Select>
-                        {formData.driverId && (
-                            <p className="text-xs text-green-600 mt-1">
-                                * Um link de WhatsApp será gerado para o motorista ao salvar.
-                            </p>
-                        )}
-                        {availableDrivers.length === 0 && (
-                            <p className="text-xs text-orange-500 mt-1">Nenhum motorista disponível nesta categoria.</p>
-                        )}
-                    </div>
+                            {rate.label}
+                        </button>
+                    ))}
                 </div>
-
-                <div className="bg-white p-4 rounded-md border border-gray-200 shadow-sm flex flex-col justify-center space-y-4">
-                    <div className="grid grid-cols-1 gap-3">
-                        <Input 
-                            label="Valor Pagamento Motorista (R$)"
-                            type="number"
-                            step="0.01"
-                            value={financials.driverFee}
-                            onChange={e => setFinancials({...financials, driverFee: parseFloat(e.target.value) || 0})}
-                        />
-                        <Input 
-                            label="Valor Cobrado Cliente (R$)"
-                            type="number"
-                            step="0.01"
-                            value={financials.clientCharge}
-                            onChange={e => setFinancials({...financials, clientCharge: parseFloat(e.target.value) || 0})}
-                        />
-                    </div>
-                    <div className="text-xs text-gray-400 text-right pt-2 border-t mt-2 flex justify-between items-center">
-                        <span>Margem Prevista:</span>
-                        <span className={`font-bold text-sm ${profitMargin >= 0 ? "text-green-600" : "text-red-500"}`}>
-                            R$ {profitMargin.toFixed(2)}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </Card>
+             </Card>
+        )}
 
         <div className="flex justify-end gap-3 pt-4 pb-12">
             <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
             <Button type="submit">
-                {initialData ? 'Salvar Alterações' : 'Cadastrar e Enviar'}
+                {initialData ? 'Salvar Alterações' : 'Cadastrar Solicitação'}
             </Button>
         </div>
       </form>

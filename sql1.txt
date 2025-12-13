@@ -1,3 +1,4 @@
+
 -- Enable UUID extension (optional but good practice)
 create extension if not exists "uuid-ossp";
 
@@ -18,7 +19,8 @@ create table if not exists requests (
   "scheduledFor" text,
   "activityType" text,
   "contactOnSite" text,
-  "observations" text
+  "observations" text,
+  "waypoints" jsonb
 );
 
 -- 2. Table: drivers
@@ -68,7 +70,17 @@ create table if not exists rates (
   "baseFee" float
 );
 
--- 6. Insert Default Rates (prevent empty config)
+-- 6. Table: users (New)
+create table if not exists users (
+  "id" text primary key,
+  "username" text unique,
+  "password" text, -- Plain text for demo, use hash in prod
+  "role" text, -- ADMIN, OPERATIONAL, CLIENT
+  "clientId" text, -- foreign key to clients if role is CLIENT
+  "name" text
+);
+
+-- 7. Insert Default Rates (prevent empty config)
 insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
 values 
   ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
@@ -77,10 +89,14 @@ values
   ('CAMINHAO', 'Caminhão', 8.00, 12.00, 50.00)
 on conflict ("type") do nothing;
 
--- 7. SAFELY ADD NEW COLUMNS (Migration Logic)
--- This block ensures that if you already created the tables before, 
--- the new columns are added without error.
+-- 8. Insert Default Users
+insert into users ("id", "username", "password", "role", "name")
+values 
+  ('1', 'admin', 'admin', 'ADMIN', 'Administrador'),
+  ('2', 'operacional', '123', 'OPERATIONAL', 'Operador Logístico')
+on conflict ("id") do nothing;
 
+-- 9. SAFELY ADD NEW COLUMNS (Migration Logic)
 do $$
 begin
   -- Add 'scheduledFor' to requests
@@ -101,6 +117,11 @@ begin
   -- Add 'observations' to requests
   if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='observations') then
     alter table requests add column "observations" text;
+  end if;
+  
+  -- Add 'waypoints' to requests (JSONB for efficient storage of arrays)
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='waypoints') then
+    alter table requests add column "waypoints" jsonb;
   end if;
 
   -- Add 'plate' to drivers

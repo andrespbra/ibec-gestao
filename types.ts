@@ -1,9 +1,20 @@
 
+
 export type VehicleType = 'MOTO' | 'CARRO' | 'UTILITARIO' | 'CAMINHAO';
 
 export type RequestStatus = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO';
 
 export type ActivityType = 'COLETAR' | 'ENTREGAR' | 'COLETAR_ENTREGAR' | 'OUTROS';
+
+export type UserRole = 'ADMIN' | 'OPERATIONAL' | 'CLIENT';
+
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  clientId?: string; // If role is CLIENT, links to specific client
+  name: string;
+}
 
 export interface TransportRequest {
   id: string;

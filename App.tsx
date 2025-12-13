@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { INITIAL_RATES, TransportRequest, VehicleRate, RequestStatus, Driver, Client, DriverExpense } from './types';
+import { INITIAL_RATES, TransportRequest, VehicleRate, RequestStatus, Driver, Client, DriverExpense, User } from './types';
 import { Dashboard } from './components/Dashboard';
 import { NewRequest } from './components/NewRequest';
 import { Settings } from './components/Settings';
@@ -10,6 +10,7 @@ import { Clients } from './components/Clients';
 import { NewClient } from './components/NewClient';
 import { Payroll } from './components/Payroll';
 import { Reports } from './components/Reports';
+import { Login } from './components/Login';
 import { Icons } from './components/Components';
 import { DataManager } from './services/dataManager';
 
@@ -18,6 +19,7 @@ type ViewState = 'DASHBOARD' | 'NEW_REQUEST' | 'SETTINGS' | 'DRIVERS' | 'NEW_DRI
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   // Data State
   const [rates, setRates] = useState<VehicleRate[]>(INITIAL_RATES);
@@ -56,7 +58,7 @@ const App: React.FC = () => {
         // Optimistic Update
         setRequests(requests.map(r => r.id === updatedRequest.id ? updatedRequest : r));
         DataManager.updateRequest(updatedRequest);
-        setCurrentView('REPORTS'); // Go back to reports context usually when editing
+        setCurrentView('DASHBOARD'); // Go back to dashboard (or previous view)
         setEditingRequest(undefined);
     } else {
         // CREATE New
@@ -72,19 +74,15 @@ const App: React.FC = () => {
         DataManager.addRequest(newRequest);
         setCurrentView('DASHBOARD');
 
-        // WhatsApp Integration Logic
+        // WhatsApp Integration Logic (Only for Admin/Ops, usually)
         if (newRequest.driverId) {
             const driver = drivers.find(d => d.id === newRequest.driverId);
             if (driver && driver.phone) {
-                // Remove non-digits
                 const phone = driver.phone.replace(/\D/g, '');
-                
-                // Format Date
                 const scheduledDate = newRequest.scheduledFor 
                     ? new Date(newRequest.scheduledFor).toLocaleString('pt-BR') 
                     : 'Imediato';
                 
-                // Readable Activity
                 const activityMap: Record<string, string> = {
                     'ENTREGAR': 'Entregar',
                     'COLETAR': 'Coletar',
@@ -113,8 +111,6 @@ const App: React.FC = () => {
 
                 const encodedMessage = encodeURIComponent(message);
                 const whatsappUrl = `https://wa.me/55${phone}?text=${encodedMessage}`;
-                
-                // Open WhatsApp in new tab
                 window.open(whatsappUrl, '_blank');
             }
         }
@@ -218,18 +214,31 @@ const App: React.FC = () => {
       );
   }
 
+  // --- LOGIN GUARD ---
+  if (!currentUser) {
+    return <Login onLogin={(user) => setCurrentUser(user)} />;
+  }
+
+  // --- PERMISSIONS CHECK ---
+  const canAccessDrivers = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
+  const canAccessClients = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
+  const canAccessReports = currentUser.role === 'ADMIN';
+  const canAccessPayroll = currentUser.role === 'ADMIN';
+  const canAccessSettings = currentUser.role === 'ADMIN';
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center gap-2 font-bold text-primary text-xl">
-             <Icons.Truck /> LogiTrack AI
+             <Icons.Truck /> LogiTrack
         </div>
-        {DataManager.isOnline && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div> Online
-            </span>
-        )}
+        <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">{currentUser.name}</span>
+            <button onClick={() => setCurrentUser(null)} className="text-gray-400">
+                <Icons.Home /> {/* Using generic icon for logout in mobile for now */}
+            </button>
+        </div>
       </div>
 
       {/* Sidebar Navigation */}
@@ -237,6 +246,9 @@ const App: React.FC = () => {
         <div className="p-6 border-b border-gray-100">
              <div className="flex items-center gap-2 font-bold text-primary text-2xl">
                  <Icons.Truck /> LogiTrack AI
+             </div>
+             <div className="mt-2 text-xs text-gray-500 uppercase font-semibold tracking-wider">
+                {currentUser.role}
              </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
@@ -249,57 +261,81 @@ const App: React.FC = () => {
             >
                 <Icons.Home /> Dashboard
             </button>
-            <button 
-                onClick={() => {
-                    setCurrentView('REPORTS');
-                    setEditingRequest(undefined);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'REPORTS' || (currentView === 'NEW_REQUEST' && editingRequest) ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
-            >
-                <Icons.BarChart /> Relatórios
-            </button>
-            <button 
-                onClick={() => {
-                    setCurrentView('DRIVERS');
-                    setEditingDriver(undefined);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'DRIVERS' || currentView === 'NEW_DRIVER' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
-            >
-                <Icons.Users /> Motoristas
-            </button>
-            <button 
-                onClick={() => {
-                    setCurrentView('CLIENTS');
-                    setEditingClient(undefined);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'CLIENTS' || currentView === 'NEW_CLIENT' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
-            >
-                <Icons.Building /> Clientes
-            </button>
-            <button 
-                onClick={() => setCurrentView('PAYROLL')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'PAYROLL' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
-            >
-                <Icons.DollarSign /> Folha Pgto.
-            </button>
-            <button 
-                onClick={() => setCurrentView('SETTINGS')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'SETTINGS' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
-            >
-                <Icons.Settings /> Configurações
-            </button>
-        </nav>
-        <div className="p-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
-            <span>v2.2 Cloud</span>
-            {DataManager.isOnline ? (
-                <span className="flex items-center gap-1 text-green-600 font-medium">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div> Sync On
-                </span>
-            ) : (
-                <span className="flex items-center gap-1 text-gray-400">
-                    <div className="w-2 h-2 rounded-full bg-gray-300"></div> Offline
-                </span>
+            
+            {canAccessReports && (
+                <button 
+                    onClick={() => {
+                        setCurrentView('REPORTS');
+                        setEditingRequest(undefined);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'REPORTS' || (currentView === 'NEW_REQUEST' && editingRequest) ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                    <Icons.BarChart /> Relatórios
+                </button>
             )}
+
+            {canAccessDrivers && (
+                <button 
+                    onClick={() => {
+                        setCurrentView('DRIVERS');
+                        setEditingDriver(undefined);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'DRIVERS' || currentView === 'NEW_DRIVER' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                    <Icons.Users /> Motoristas
+                </button>
+            )}
+
+            {canAccessClients && (
+                <button 
+                    onClick={() => {
+                        setCurrentView('CLIENTS');
+                        setEditingClient(undefined);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'CLIENTS' || currentView === 'NEW_CLIENT' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                    <Icons.Building /> Clientes
+                </button>
+            )}
+
+            {canAccessPayroll && (
+                <button 
+                    onClick={() => setCurrentView('PAYROLL')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'PAYROLL' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                    <Icons.DollarSign /> Folha Pgto.
+                </button>
+            )}
+
+            {canAccessSettings && (
+                <button 
+                    onClick={() => setCurrentView('SETTINGS')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${currentView === 'SETTINGS' ? 'bg-blue-50 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                    <Icons.Settings /> Configurações
+                </button>
+            )}
+        </nav>
+        <div className="p-4 border-t border-gray-100">
+            <button 
+                onClick={() => setCurrentUser(null)}
+                className="w-full flex items-center gap-2 text-gray-500 hover:text-red-500 transition-colors mb-4 pl-2"
+            >
+                <span className="text-sm font-medium">Sair do Sistema</span>
+            </button>
+
+            <div className="flex justify-between items-center text-xs text-gray-400">
+                <span>v3.0 Secure</span>
+                {DataManager.isOnline ? (
+                    <span className="flex items-center gap-1 text-green-600 font-medium">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div> Online
+                    </span>
+                ) : (
+                    <span className="flex items-center gap-1 text-gray-400">
+                        <div className="w-2 h-2 rounded-full bg-gray-300"></div> Offline
+                    </span>
+                )}
+            </div>
         </div>
       </aside>
 
@@ -308,18 +344,21 @@ const App: React.FC = () => {
             <button onClick={() => setCurrentView('DASHBOARD')} className={`flex flex-col items-center text-xs ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-500'}`}>
                 <Icons.Home /> <span className="mt-1">Início</span>
             </button>
-            <button onClick={() => setCurrentView('REPORTS')} className={`flex flex-col items-center text-xs ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-500'}`}>
-                <Icons.BarChart /> <span className="mt-1">Relat.</span>
-            </button>
-            <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex flex-col items-center text-xs ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-500'}`}>
-                <Icons.Users /> <span className="mt-1">Mot.</span>
-            </button>
-            <button onClick={() => setCurrentView('PAYROLL')} className={`flex flex-col items-center text-xs ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-500'}`}>
-                <Icons.DollarSign /> <span className="mt-1">Folha</span>
-            </button>
-            <button onClick={() => setCurrentView('SETTINGS')} className={`flex flex-col items-center text-xs ${currentView === 'SETTINGS' ? 'text-primary' : 'text-gray-500'}`}>
-                <Icons.Settings /> <span className="mt-1">Conf.</span>
-            </button>
+            {canAccessReports && (
+                <button onClick={() => setCurrentView('REPORTS')} className={`flex flex-col items-center text-xs ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-500'}`}>
+                    <Icons.BarChart /> <span className="mt-1">Relat.</span>
+                </button>
+            )}
+            {canAccessDrivers && (
+                <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex flex-col items-center text-xs ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-500'}`}>
+                    <Icons.Users /> <span className="mt-1">Mot.</span>
+                </button>
+            )}
+             {canAccessPayroll && (
+                <button onClick={() => setCurrentView('PAYROLL')} className={`flex flex-col items-center text-xs ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-500'}`}>
+                    <Icons.DollarSign /> <span className="mt-1">Folha</span>
+                </button>
+            )}
       </div>
 
       {/* Main Content */}
@@ -329,6 +368,7 @@ const App: React.FC = () => {
                 <Dashboard 
                     requests={requests}
                     drivers={drivers}
+                    currentUser={currentUser}
                     onNewRequest={() => {
                         setEditingRequest(undefined);
                         setCurrentView('NEW_REQUEST');
@@ -344,10 +384,13 @@ const App: React.FC = () => {
                     clients={clients}
                     existingRequests={requests}
                     initialData={editingRequest}
+                    currentUser={currentUser}
                     onSubmit={handleSaveRequest}
                     onCancel={() => {
                         if (editingRequest) {
-                            setCurrentView('REPORTS');
+                            // If editing, logic depends on who is editing. Admin might be in Reports.
+                            // Client/Ops usually in Dashboard.
+                            setCurrentView(canAccessReports ? 'REPORTS' : 'DASHBOARD');
                         } else {
                             setCurrentView('DASHBOARD');
                         }
@@ -355,7 +398,7 @@ const App: React.FC = () => {
                     }}
                 />
             )}
-            {currentView === 'DRIVERS' && (
+            {currentView === 'DRIVERS' && canAccessDrivers && (
                 <Drivers 
                     drivers={drivers}
                     onNewDriver={() => {
@@ -365,7 +408,7 @@ const App: React.FC = () => {
                     onEditDriver={handleEditDriver}
                 />
             )}
-            {currentView === 'NEW_DRIVER' && (
+            {currentView === 'NEW_DRIVER' && canAccessDrivers && (
                 <NewDriver
                     rates={rates}
                     initialData={editingDriver}
@@ -376,7 +419,7 @@ const App: React.FC = () => {
                     }}
                 />
             )}
-            {currentView === 'CLIENTS' && (
+            {currentView === 'CLIENTS' && canAccessClients && (
                 <Clients 
                     clients={clients}
                     onNewClient={() => {
@@ -386,7 +429,7 @@ const App: React.FC = () => {
                     onEditClient={handleEditClient}
                 />
             )}
-            {currentView === 'NEW_CLIENT' && (
+            {currentView === 'NEW_CLIENT' && canAccessClients && (
                 <NewClient
                     initialData={editingClient}
                     onSubmit={handleSaveClient}
@@ -396,7 +439,7 @@ const App: React.FC = () => {
                     }}
                 />
             )}
-             {currentView === 'PAYROLL' && (
+             {currentView === 'PAYROLL' && canAccessPayroll && (
                 <Payroll 
                     drivers={drivers}
                     requests={requests}
@@ -404,7 +447,7 @@ const App: React.FC = () => {
                     onAddExpense={handleAddExpense}
                 />
             )}
-            {currentView === 'REPORTS' && (
+            {currentView === 'REPORTS' && canAccessReports && (
                 <Reports 
                     requests={requests}
                     clients={clients}
@@ -412,7 +455,7 @@ const App: React.FC = () => {
                     onDeleteRequest={handleDeleteRequest}
                 />
             )}
-            {currentView === 'SETTINGS' && (
+            {currentView === 'SETTINGS' && canAccessSettings && (
                 <Settings 
                     rates={rates}
                     onUpdateRate={handleRateUpdate}
