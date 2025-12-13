@@ -81,24 +81,8 @@ create table if not exists users (
   "mustChangePassword" boolean default false
 );
 
--- 7. Insert Default Rates (prevent empty config)
-insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
-values 
-  ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
-  ('CARRO', 'Carro', 2.50, 4.00, 8.00),
-  ('UTILITARIO', 'Utilitário', 4.00, 6.50, 15.00),
-  ('CAMINHAO', 'Caminhão', 8.00, 12.00, 50.00)
-on conflict ("type") do nothing;
-
--- 8. Insert Default Users
-insert into users ("id", "username", "password", "role", "name", "mustChangePassword")
-values 
-  ('1', 'admin', 'admin', 'ADMIN', 'Administrador', false),
-  ('2', 'operacional', '123', 'OPERATIONAL', 'Operador Logístico', false),
-  ('4', 'edna', '123', 'ADMIN', 'Edna (Admin)', true)
-on conflict ("id") do nothing;
-
--- 9. SAFELY ADD NEW COLUMNS (Migration Logic)
+-- 7. SAFELY ADD NEW COLUMNS (Migration Logic)
+-- IMPORTANT: This block must run BEFORE inserts to ensure columns exist
 do $$
 begin
   -- Add 'scheduledFor' to requests
@@ -127,8 +111,10 @@ begin
   end if;
   
   -- Add 'mustChangePassword' to users
-  if not exists (select 1 from information_schema.columns where table_name='users' and column_name='mustChangePassword') then
-    alter table users add column "mustChangePassword" boolean default false;
+  if exists (select 1 from information_schema.tables where table_name='users') then
+    if not exists (select 1 from information_schema.columns where table_name='users' and column_name='mustChangePassword') then
+        alter table users add column "mustChangePassword" boolean default false;
+    end if;
   end if;
 
   -- Add 'plate' to drivers
@@ -147,3 +133,20 @@ begin
   end if;
 end
 $$;
+
+-- 8. Insert Default Rates (prevent empty config)
+insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
+values 
+  ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
+  ('CARRO', 'Carro', 2.50, 4.00, 8.00),
+  ('UTILITARIO', 'Utilitário', 4.00, 6.50, 15.00),
+  ('CAMINHAO', 'Caminhão', 8.00, 12.00, 50.00)
+on conflict ("type") do nothing;
+
+-- 9. Insert Default Users
+insert into users ("id", "username", "password", "role", "name", "mustChangePassword")
+values 
+  ('1', 'admin', 'admin', 'ADMIN', 'Administrador', false),
+  ('2', 'operacional', '123', 'OPERATIONAL', 'Operador Logístico', false),
+  ('4', 'edna', '123', 'ADMIN', 'Edna (Admin)', true)
+on conflict ("id") do nothing;
