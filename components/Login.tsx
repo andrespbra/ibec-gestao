@@ -124,14 +124,19 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       <Card className="w-full max-w-md p-8 shadow-2xl relative z-10 border-t-4 border-primary">
         <div className="flex flex-col items-center mb-8">
-          {/* Logo Placeholder - User can replace src with actual logo URL or file */}
-          <div className="mb-4 flex items-center justify-center">
-             <div className="bg-white p-2 rounded-lg">
-                {/* Fallback to stylized text if image fails or isn't present, but using <img> structure as requested */}
-                <div className="flex flex-col items-center">
-                    <Icons.Truck /> 
-                    {/* If you have the file, use: <img src="/logo.png" alt="CRM IBEC" className="h-16" /> */}
-                </div>
+          {/* Logo Section */}
+          <div className="mb-6 flex items-center justify-center">
+             <div className="p-2">
+                <img 
+                    src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" 
+                    alt="CRM IBEC" 
+                    className="h-24 w-auto object-contain"
+                    onError={(e) => {
+                        // Fallback in case image fails to load
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement!.innerHTML = '<div class="text-4xl">🚚</div>';
+                    }}
+                />
              </div>
           </div>
           <h1 className="text-3xl font-extrabold text-primary tracking-tight">CRM IBEC</h1>

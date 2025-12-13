@@ -231,7 +231,8 @@ const App: React.FC = () => {
       {/* Mobile Header */}
       <div className="md:hidden bg-primary shadow-lg p-4 flex justify-between items-center sticky top-0 z-10 text-white">
         <div className="flex items-center gap-2 font-bold text-xl">
-             <Icons.Truck /> CRM IBEC
+             <img src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" alt="Logo" className="h-8 w-auto bg-white/20 rounded p-0.5" />
+             CRM IBEC
         </div>
         <div className="flex items-center gap-2">
             <span className="text-xs text-blue-100">{currentUser.name}</span>
@@ -245,8 +246,9 @@ const App: React.FC = () => {
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0 h-screen shadow-sm">
         <div className="p-6 border-b border-gray-100 flex flex-col items-center">
              {/* Logo / Brand */}
-             <div className="flex items-center gap-2 font-extrabold text-primary text-2xl tracking-tight">
-                 <Icons.Truck /> CRM IBEC
+             <div className="flex flex-col items-center gap-2">
+                 <img src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" alt="CRM IBEC" className="h-14 w-auto object-contain" />
+                 <span className="font-extrabold text-primary text-xl tracking-tight">CRM IBEC</span>
              </div>
              <div className="mt-2 text-[10px] text-secondary uppercase font-bold tracking-widest bg-orange-50 px-2 py-0.5 rounded-full">
                 {currentUser.role}
