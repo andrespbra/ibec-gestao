@@ -37,6 +37,8 @@ export interface TransportRequest {
   observations?: string;
   waypoints?: string[]; // Intermediate addresses
   paymentDate?: string; // ISO String, indicates when the client paid
+  commissionedName?: string; // Name of the person receiving commission
+  commissionPercentage?: number; // Percentage of commission
 }
 
 export interface VehicleRate {

@@ -27,7 +27,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     scheduledFor: initialData?.scheduledFor || '',
     activityType: initialData?.activityType || ('ENTREGAR' as ActivityType),
     contactOnSite: initialData?.contactOnSite || '',
-    observations: initialData?.observations || ''
+    observations: initialData?.observations || '',
+    commissionedName: initialData?.commissionedName || '',
+    commissionPercentage: initialData?.commissionPercentage || 0
   });
 
   // State for Waypoints (Intermediate Stops)
@@ -190,6 +192,10 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
 
   // Render Logic
   const isClient = currentUser.role === 'CLIENT';
+  const isAdmin = currentUser.role === 'ADMIN';
+
+  // Calculate commission value for display
+  const commissionValue = (financials.clientCharge * (formData.commissionPercentage / 100)) || 0;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -244,23 +250,8 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                         placeholder="Nome da empresa ou pessoa" 
                         value={formData.clientName}
                         onChange={e => setFormData({...formData, clientName: e.target.value})}
-                        required={isClient} // Mandatory for client
-                        disabled={isClient} // Usually Client Name is the billing entity, so for a Client User this is fixed to themselves. Wait, "Destinatário" might be different. 
-                        // Prompt says: "Cliente (só aparece ele mesmo), Cliente / Destinatario"
-                        // Interpretation: The "Client" field in DB is the payer. The "Recipient" is who receives.
-                        // In the current form, we have `clientName` which maps to the payer.
-                        // We need to allow them to type the Recipient?
-                        // Actually, looking at previous code, `clientName` was used for the entity being served.
-                        // Let's assume for Client User, `clientName` is FIXED to their company name, 
-                        // but maybe we need a "Recipient" field? 
-                        // The prompt lists: "Cliente (só aparece ele mesmo), Cliente / Destinatario". 
-                        // This implies TWO fields. But `TransportRequest` only has `clientName`. 
-                        // I will use `observations` or `destination` for recipient details if not adding a new field, 
-                        // OR I will simply let `clientName` be editable but pre-filled? 
-                        // "Cliente (só aparece ele mesmo)" -> This refers to the payer.
-                        // "Cliente / Destinatario" -> This is likely the target.
-                        // Current `TransportRequest` has `clientName`. Let's assume `clientName` is the Payer.
-                        // I will keep `clientName` locked for Client Role as the Payer. 
+                        required={isClient}
+                        disabled={isClient} 
                     />
                      {isClient && <p className="text-xs text-gray-500">Faturado para: {formData.clientName}</p>}
                 </div>
@@ -453,6 +444,39 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                         </div>
                     </div>
                 </div>
+
+                {/* COMMISSION SECTION - ADMIN ONLY */}
+                {isAdmin && (
+                    <div className="mt-6 pt-4 border-t border-blue-200">
+                         <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                            <span className="bg-purple-200 text-purple-800 p-1 rounded-full text-xs">ADMIN</span>
+                            Comissionamento
+                         </h4>
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <Input 
+                                label="Nome do Comissionado"
+                                placeholder="Ex: Vendedor A"
+                                value={formData.commissionedName}
+                                onChange={e => setFormData({...formData, commissionedName: e.target.value})}
+                            />
+                            <div className="relative">
+                                <Input 
+                                    label="Porcentagem (%)"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.1"
+                                    value={formData.commissionPercentage}
+                                    onChange={e => setFormData({...formData, commissionPercentage: parseFloat(e.target.value) || 0})}
+                                />
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded p-2 px-3 mb-[2px]">
+                                <span className="text-xs text-gray-500 block">Valor Comissão</span>
+                                <span className="text-gray-800 font-bold">R$ {commissionValue.toFixed(2)}</span>
+                            </div>
+                         </div>
+                    </div>
+                )}
             </Card>
         ) : (
              <Card className="p-6">

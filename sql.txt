@@ -21,7 +21,9 @@ create table if not exists requests (
   "activityType" text,
   "contactOnSite" text,
   "observations" text,
-  "waypoints" jsonb
+  "waypoints" jsonb,
+  "commissionedName" text,
+  "commissionPercentage" float
 );
 
 -- 2. Table: drivers
@@ -109,6 +111,16 @@ begin
   -- Add 'waypoints' to requests (JSONB for efficient storage of arrays)
   if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='waypoints') then
     alter table requests add column "waypoints" jsonb;
+  end if;
+
+  -- Add 'commissionedName' to requests
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='commissionedName') then
+    alter table requests add column "commissionedName" text;
+  end if;
+
+  -- Add 'commissionPercentage' to requests
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='commissionPercentage') then
+    alter table requests add column "commissionPercentage" float;
   end if;
   
   -- Add 'mustChangePassword' to users
