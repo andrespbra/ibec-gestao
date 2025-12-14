@@ -25,10 +25,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
   });
 
   const isClient = currentUser.role === 'CLIENT';
+  const isAdmin = currentUser.role === 'ADMIN';
 
   // Stats
   const totalRequests = filteredRequests.length;
+  // "Em Andamento" usually implies active work. In this system strictly 'EM_ANDAMENTO'.
   const inProgress = filteredRequests.filter(r => r.status === 'EM_ANDAMENTO').length;
+  const completedRequests = filteredRequests.filter(r => r.status === 'CONCLUIDO').length;
+  
   const totalRevenue = filteredRequests.reduce((acc, r) => acc + r.clientCharge, 0);
 
   const getDriverName = (driverId?: string) => {
@@ -58,20 +62,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
         </Button>
       </div>
 
-      {/* Stats Cards - Hide Revenue for Client */}
-      <div className={`grid grid-cols-1 ${!isClient ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 flex flex-col justify-between border-l-4 border-l-primary">
             <span className="text-gray-500 text-sm font-medium uppercase">Total Solicitações</span>
             <span className="text-3xl font-bold text-gray-800 mt-2">{totalRequests}</span>
         </Card>
+        
         <Card className="p-5 flex flex-col justify-between border-l-4 border-l-warning">
             <span className="text-gray-500 text-sm font-medium uppercase">Em Andamento</span>
             <span className="text-3xl font-bold text-gray-800 mt-2">{inProgress}</span>
         </Card>
-        {!isClient && (
+
+        {/* Third Card Logic: Admin sees Revenue, Others see Completed */}
+        {isAdmin ? (
             <Card className="p-5 flex flex-col justify-between border-l-4 border-l-secondary">
                 <span className="text-gray-500 text-sm font-medium uppercase">Faturamento Total</span>
                 <span className="text-3xl font-bold text-gray-800 mt-2">R$ {totalRevenue.toFixed(2)}</span>
+            </Card>
+        ) : (
+            <Card className="p-5 flex flex-col justify-between border-l-4 border-l-green-500">
+                <span className="text-gray-500 text-sm font-medium uppercase">Finalizadas</span>
+                <span className="text-3xl font-bold text-gray-800 mt-2">{completedRequests}</span>
             </Card>
         )}
       </div>
