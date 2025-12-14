@@ -1,6 +1,6 @@
 
 
-export type VehicleType = 'MOTO' | 'CARRO' | 'UTILITARIO' | 'CAMINHAO';
+export type VehicleType = 'MOTO' | 'CARRO' | 'UTILITARIO' | 'CAMINHAO' | 'PRESSKIT';
 
 export type RequestStatus = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO';
 
@@ -89,4 +89,5 @@ export const INITIAL_RATES: VehicleRate[] = [
   { type: 'CARRO', label: 'Carro', costPerKm: 2.50, chargePerKm: 4.00, baseFee: 8.00 },
   { type: 'UTILITARIO', label: 'Utilitário', costPerKm: 4.00, chargePerKm: 6.50, baseFee: 15.00 },
   { type: 'CAMINHAO', label: 'Caminhão', costPerKm: 8.00, chargePerKm: 12.00, baseFee: 50.00 },
+  { type: 'PRESSKIT', label: 'Press Kit', costPerKm: 2.50, chargePerKm: 4.50, baseFee: 12.00 },
 ];

@@ -204,6 +204,7 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
             <option value="CARRO">Carro</option>
             <option value="UTILITARIO">Utilitário</option>
             <option value="CAMINHAO">Caminhão</option>
+            <option value="PRESSKIT">Press Kit</option>
           </Select>
           <Select 
             label="Cliente" 

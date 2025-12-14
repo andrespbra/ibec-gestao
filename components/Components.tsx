@@ -61,7 +61,8 @@ export const VehicleBadge: React.FC<{ type: VehicleType }> = ({ type }) => {
     MOTO: '🏍️ Motoboy',
     CARRO: '🚗 Carro',
     UTILITARIO: '🚙 Utilitário',
-    CAMINHAO: '🚚 Caminhão'
+    CAMINHAO: '🚚 Caminhão',
+    PRESSKIT: '🎁 Press Kit'
   };
   return <span className="text-gray-700 text-sm">{labels[type]}</span>;
 };

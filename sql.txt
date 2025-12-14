@@ -1,4 +1,5 @@
 
+
 -- Enable UUID extension (optional but good practice)
 create extension if not exists "uuid-ossp";
 
@@ -140,7 +141,8 @@ values
   ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
   ('CARRO', 'Carro', 2.50, 4.00, 8.00),
   ('UTILITARIO', 'Utilitário', 4.00, 6.50, 15.00),
-  ('CAMINHAO', 'Caminhão', 8.00, 12.00, 50.00)
+  ('CAMINHAO', 'Caminhão', 8.00, 12.00, 50.00),
+  ('PRESSKIT', 'Press Kit', 2.50, 4.50, 12.00)
 on conflict ("type") do nothing;
 
 -- 9. Insert Default Users
