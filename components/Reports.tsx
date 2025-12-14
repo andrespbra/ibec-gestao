@@ -10,12 +10,20 @@ interface ReportsProps {
   clients: Client[];
   onEditRequest: (request: TransportRequest) => void;
   onDeleteRequest: (id: string) => void;
+  onPaymentUpdate: (id: string, date: string | undefined) => void;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditRequest, onDeleteRequest }) => {
-  // Filter States
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditRequest, onDeleteRequest, onPaymentUpdate }) => {
+  // Initialize with Current Month
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
+
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'ALL'>('ALL');
   const [vehicleFilter, setVehicleFilter] = useState<VehicleType | 'ALL'>('ALL');
   const [clientFilter, setClientFilter] = useState<string>('ALL');
@@ -59,6 +67,9 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
   const totalProfit = totalRevenue - totalCost;
   const count = filteredData.length;
 
+  const totalReceived = filteredData.reduce((acc, curr) => curr.paymentDate ? acc + curr.clientCharge : acc, 0);
+  const totalReceivable = totalRevenue - totalReceived;
+
   const handleExportPDF = () => {
     const doc = new jsPDF();
     
@@ -77,7 +88,7 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
     // Summary Box
     doc.setDrawColor(220);
     doc.setFillColor(245, 247, 250);
-    doc.rect(14, 40, 182, 25, 'F');
+    doc.rect(14, 40, 182, 35, 'F'); // Increased height
     
     doc.setFontSize(10);
     doc.setTextColor(80);
@@ -88,27 +99,31 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text(`R$ ${totalRevenue.toFixed(2)}`, 20, 58);
-    doc.text(`R$ ${totalCost.toFixed(2)}`, 80, 58);
-    doc.text(`R$ ${totalProfit.toFixed(2)}`, 140, 58);
+    doc.text(`R$ ${totalRevenue.toFixed(2)}`, 20, 56);
+    doc.text(`R$ ${totalCost.toFixed(2)}`, 80, 56);
+    doc.text(`R$ ${totalProfit.toFixed(2)}`, 140, 56);
+    
+    doc.setFontSize(9);
+    doc.setTextColor(100);
     doc.setFont("helvetica", "normal");
+    doc.text(`Recebido: R$ ${totalReceived.toFixed(2)}`, 20, 68);
+    doc.text(`A Receber: R$ ${totalReceivable.toFixed(2)}`, 80, 68);
 
     // Table
-    const tableColumn = ["Data Serviço", "Cliente", "Veículo", "Status", "Custo", "Receita", "Lucro"];
+    const tableColumn = ["Data Serviço", "Cliente", "Nota Fiscal", "Status", "Receita", "Pgto"];
     const tableRows = filteredData.map(req => [
         getServiceDate(req).toLocaleDateString('pt-BR'),
         req.clientName,
-        req.vehicleType,
+        req.invoiceNumber,
         req.status,
-        `R$ ${req.driverFee.toFixed(2)}`,
         `R$ ${req.clientCharge.toFixed(2)}`,
-        `R$ ${(req.clientCharge - req.driverFee).toFixed(2)}`
+        req.paymentDate ? new Date(req.paymentDate).toLocaleDateString('pt-BR') : 'Pendente'
     ]);
 
     autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: 75,
+        startY: 80,
         theme: 'grid',
         headStyles: { fillColor: [65, 42, 156], fontSize: 9 }, // IBEC Purple
         bodyStyles: { fontSize: 8 },
@@ -138,7 +153,19 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
 
       {/* Filters */}
       <Card className="p-5 bg-white">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">Filtros de Pesquisa</h3>
+        <div className="flex justify-between items-center mb-3 border-b pb-2">
+             <h3 className="text-sm font-semibold text-gray-700">Filtros de Pesquisa</h3>
+             <button 
+                onClick={() => {
+                    const now = new Date();
+                    setStartDate(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
+                    setEndDate(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]);
+                }}
+                className="text-xs text-primary hover:underline"
+             >
+                Resetar para Mês Atual
+             </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Input 
             label="Data Serviço Inicial" 
@@ -187,55 +214,58 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
       </Card>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 border-l-4 border-l-primary">
-          <span className="text-gray-500 text-xs font-bold uppercase">Receita Total</span>
-          <span className="text-2xl font-bold text-gray-800 block mt-1">R$ {totalRevenue.toFixed(2)}</span>
-          <span className="text-xs text-gray-400">Valor cobrado dos clientes</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <Card className="p-4 border-l-4 border-l-primary">
+          <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Receita Total</span>
+          <span className="text-xl font-bold text-gray-800 block mt-1">R$ {totalRevenue.toFixed(2)}</span>
         </Card>
 
-        <Card className="p-5 border-l-4 border-l-secondary">
-          <span className="text-gray-500 text-xs font-bold uppercase">Custo Motoristas</span>
-          <span className="text-2xl font-bold text-gray-800 block mt-1">R$ {totalCost.toFixed(2)}</span>
-          <span className="text-xs text-gray-400">Valor repassado aos parceiros</span>
+        <Card className="p-4 border-l-4 border-l-emerald-500 bg-emerald-50">
+          <span className="text-emerald-700 text-[10px] font-bold uppercase tracking-wider">Valor Recebido</span>
+          <span className="text-xl font-bold text-emerald-800 block mt-1">R$ {totalReceived.toFixed(2)}</span>
         </Card>
 
-        <Card className="p-5 border-l-4 border-l-green-500 bg-green-50">
-          <span className="text-green-700 text-xs font-bold uppercase">Lucro Líquido</span>
-          <span className="text-2xl font-bold text-green-800 block mt-1">R$ {totalProfit.toFixed(2)}</span>
-          <span className="text-xs text-green-600">Margem: {totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0}%</span>
+         <Card className="p-4 border-l-4 border-l-orange-400 bg-orange-50">
+          <span className="text-orange-700 text-[10px] font-bold uppercase tracking-wider">A Receber</span>
+          <span className="text-xl font-bold text-orange-800 block mt-1">R$ {totalReceivable.toFixed(2)}</span>
         </Card>
 
-        <Card className="p-5 border-l-4 border-l-gray-500">
-          <span className="text-gray-500 text-xs font-bold uppercase">Total Entregas</span>
-          <span className="text-2xl font-bold text-gray-800 block mt-1">{count}</span>
-          <span className="text-xs text-gray-400">Registros filtrados</span>
+        <Card className="p-4 border-l-4 border-l-green-600">
+          <span className="text-green-700 text-[10px] font-bold uppercase tracking-wider">Lucro Líquido</span>
+          <span className="text-xl font-bold text-green-800 block mt-1">R$ {totalProfit.toFixed(2)}</span>
+        </Card>
+        
+        <Card className="p-4 border-l-4 border-l-gray-400">
+           <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Margem</span>
+           <span className="text-xl font-bold text-gray-600 block mt-1">{totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0}%</span>
         </Card>
       </div>
 
       {/* Detailed Table */}
       <Card className="overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
             <h3 className="font-semibold text-gray-800">Detalhamento das Entregas</h3>
+             <span className="text-xs text-gray-400">Mostrando {count} registros</span>
         </div>
         <div className="overflow-x-auto">
             <table className="w-full text-sm text-left text-gray-500">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
-                        <th className="px-6 py-3">Data Serviço</th>
-                        <th className="px-6 py-3">Cliente</th>
-                        <th className="px-6 py-3">Veículo</th>
-                        <th className="px-6 py-3">Status</th>
-                        <th className="px-6 py-3 text-right">Custo</th>
-                        <th className="px-6 py-3 text-right">Receita</th>
-                        <th className="px-6 py-3 text-right">Lucro</th>
-                        <th className="px-6 py-3 text-right">Ação</th>
+                        <th className="px-4 py-3">Data</th>
+                        <th className="px-4 py-3">Cliente / Nota</th>
+                        <th className="px-4 py-3">Veículo</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Custo</th>
+                        <th className="px-4 py-3 text-right">Receita</th>
+                        <th className="px-4 py-3 text-right">Lucro</th>
+                        <th className="px-4 py-3 text-center">Pagamento</th>
+                        <th className="px-4 py-3 text-right">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
                     {filteredData.length === 0 ? (
                         <tr>
-                            <td colSpan={8} className="px-6 py-10 text-center text-gray-400">
+                            <td colSpan={9} className="px-4 py-10 text-center text-gray-400">
                                 Nenhum registro encontrado para os filtros selecionados.
                             </td>
                         </tr>
@@ -245,40 +275,66 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                           const date = getServiceDate(req);
                           return (
                             <tr key={req.id} className="bg-white border-b hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-4 py-4 whitespace-nowrap">
                                     {date.toLocaleDateString('pt-BR')}
-                                    {req.scheduledFor && <div className="text-xs text-blue-500 font-medium">{date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</div>}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4">
                                     <div className="font-medium text-gray-900">{req.clientName}</div>
                                     <div className="text-xs">Nota: {req.invoiceNumber}</div>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4">
                                     <VehicleBadge type={req.vehicleType} />
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4">
                                     <StatusBadge status={req.status} />
                                 </td>
-                                <td className="px-6 py-4 text-right text-red-600">
+                                <td className="px-4 py-4 text-right text-red-600 text-xs">
                                     R$ {req.driverFee.toFixed(2)}
                                 </td>
-                                <td className="px-6 py-4 text-right text-blue-600 font-medium">
+                                <td className="px-4 py-4 text-right text-blue-600 font-medium text-xs">
                                     R$ {req.clientCharge.toFixed(2)}
                                 </td>
-                                <td className={`px-6 py-4 text-right font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <td className={`px-4 py-4 text-right font-bold text-xs ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     R$ {profit.toFixed(2)}
                                 </td>
-                                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                <td className="px-4 py-4 text-center">
+                                    {req.paymentDate ? (
+                                        <div 
+                                            className="inline-flex flex-col items-center cursor-pointer group"
+                                            title="Clique para desfazer pagamento"
+                                            onClick={() => {
+                                                if(window.confirm('Deseja marcar como não pago?')) {
+                                                    onPaymentUpdate(req.id, undefined);
+                                                }
+                                            }}
+                                        >
+                                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold border border-green-200">
+                                                Pago
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 mt-0.5 group-hover:text-red-500 transition-colors">
+                                                {new Date(req.paymentDate).toLocaleDateString('pt-BR')}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <button 
+                                            onClick={() => onPaymentUpdate(req.id, new Date().toISOString())}
+                                            className="bg-gray-100 hover:bg-green-50 text-gray-600 hover:text-green-700 border border-gray-300 hover:border-green-300 px-3 py-1 rounded text-xs font-medium transition-all"
+                                        >
+                                            Marcar Pago
+                                        </button>
+                                    )}
+                                </td>
+                                <td className="px-4 py-4 text-right flex justify-end gap-1">
                                      <button 
                                       onClick={() => onEditRequest(req)}
-                                      className="text-gray-500 hover:text-primary transition-colors p-1"
+                                      className="text-gray-400 hover:text-primary transition-colors p-1"
                                       title="Editar"
                                     >
                                       <Icons.Edit />
                                     </button>
                                     <button 
                                         onClick={() => handleDelete(req.id, req.invoiceNumber)}
-                                        className="text-gray-500 hover:text-red-500 transition-colors p-1"
+                                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
                                         title="Remover"
                                     >
                                         <Icons.Trash />

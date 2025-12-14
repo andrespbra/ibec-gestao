@@ -128,6 +128,15 @@ const App: React.FC = () => {
       DataManager.deleteRequest(id);
   };
 
+  const handlePaymentUpdate = (id: string, date: string | undefined) => {
+      const request = requests.find(r => r.id === id);
+      if (request) {
+          const updatedRequest = { ...request, paymentDate: date };
+          setRequests(requests.map(r => r.id === id ? updatedRequest : r));
+          DataManager.updateRequest(updatedRequest);
+      }
+  };
+
   const handleSaveDriver = (data: Omit<Driver, 'id' | 'createdAt'>) => {
       if (editingDriver) {
         // Update existing driver
@@ -480,6 +489,7 @@ const App: React.FC = () => {
                     clients={clients}
                     onEditRequest={handleEditRequest}
                     onDeleteRequest={handleDeleteRequest}
+                    onPaymentUpdate={handlePaymentUpdate}
                 />
             )}
             {currentView === 'SETTINGS' && canAccessSettings && (

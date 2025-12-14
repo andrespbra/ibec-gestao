@@ -36,6 +36,7 @@ export interface TransportRequest {
   contactOnSite?: string;
   observations?: string;
   waypoints?: string[]; // Intermediate addresses
+  paymentDate?: string; // ISO String, indicates when the client paid
 }
 
 export interface VehicleRate {
