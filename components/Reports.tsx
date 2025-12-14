@@ -64,7 +64,12 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
   // Calculations
   const totalRevenue = filteredData.reduce((acc, curr) => acc + curr.clientCharge, 0);
   const totalCost = filteredData.reduce((acc, curr) => acc + curr.driverFee, 0);
-  const totalProfit = totalRevenue - totalCost;
+  
+  // Tax Calculation: 8% of Invoice (Revenue)
+  const totalTax = totalRevenue * 0.08;
+  // Net Profit = Revenue - Driver Cost - 8% Tax
+  const totalProfit = totalRevenue - totalCost - totalTax;
+  
   const count = filteredData.length;
 
   const totalReceived = filteredData.reduce((acc, curr) => curr.paymentDate ? acc + curr.clientCharge : acc, 0);
@@ -94,7 +99,7 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
     doc.setTextColor(80);
     doc.text('RECEITA TOTAL', 20, 48);
     doc.text('CUSTO MOTORISTAS', 80, 48);
-    doc.text('LUCRO LÍQUIDO', 140, 48);
+    doc.text('LUCRO LÍQ. (-8% NF)', 140, 48);
     
     doc.setFontSize(14);
     doc.setTextColor(0);
@@ -231,7 +236,10 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
         </Card>
 
         <Card className="p-4 border-l-4 border-l-green-600">
-          <span className="text-green-700 text-[10px] font-bold uppercase tracking-wider">Lucro Líquido</span>
+          <div className="flex justify-between items-start">
+            <span className="text-green-700 text-[10px] font-bold uppercase tracking-wider">Lucro Líquido</span>
+            <span className="text-[9px] text-green-600 bg-green-100 px-1 rounded">-8% NF</span>
+          </div>
           <span className="text-xl font-bold text-green-800 block mt-1">R$ {totalProfit.toFixed(2)}</span>
         </Card>
         
@@ -257,7 +265,7 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3 text-right">Custo</th>
                         <th className="px-4 py-3 text-right">Receita</th>
-                        <th className="px-4 py-3 text-right">Lucro</th>
+                        <th className="px-4 py-3 text-right">Lucro (Liq)</th>
                         <th className="px-4 py-3 text-center">Pagamento</th>
                         <th className="px-4 py-3 text-right">Ação</th>
                     </tr>
@@ -271,7 +279,10 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                         </tr>
                     ) : (
                         filteredData.map(req => {
-                          const profit = req.clientCharge - req.driverFee;
+                          // Deduct 8% tax from each row for Profit calculation
+                          const tax = req.clientCharge * 0.08;
+                          const profit = req.clientCharge - req.driverFee - tax;
+                          
                           const date = getServiceDate(req);
                           return (
                             <tr key={req.id} className="bg-white border-b hover:bg-gray-50">
