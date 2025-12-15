@@ -231,8 +231,10 @@ const App: React.FC = () => {
   // --- PERMISSIONS CHECK ---
   const canAccessDrivers = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
   const canAccessClients = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
-  const canAccessReports = currentUser.role === 'ADMIN';
-  const canAccessPayroll = currentUser.role === 'ADMIN';
+  // Allow OPERATIONAL to access Reports and Payroll as well
+  const canAccessReports = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
+  const canAccessPayroll = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
+  // Settings strictly for ADMIN
   const canAccessSettings = currentUser.role === 'ADMIN';
 
   return (
