@@ -240,7 +240,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <div className="md:hidden bg-primary shadow-lg p-4 flex justify-between items-center sticky top-0 z-10 text-white">
+      <div className="md:hidden bg-primary shadow-lg p-4 flex justify-between items-center sticky top-0 z-40 text-white">
         <div className="flex items-center gap-2 font-bold text-xl">
              <img src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" alt="Logo" className="h-8 w-auto bg-white/20 rounded p-0.5" />
              CRM IBEC
@@ -253,8 +253,8 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Sidebar Navigation */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0 h-screen shadow-sm">
+      {/* Sidebar Navigation (Desktop) */}
+      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0 h-screen shadow-sm z-30">
         <div className="p-6 border-b border-gray-100 flex flex-col items-center">
              {/* Logo / Brand */}
              <div className="flex flex-col items-center gap-2">
@@ -363,7 +363,7 @@ const App: React.FC = () => {
             </button>
 
             <div className="flex justify-between items-center text-xs text-gray-400">
-                <span>v3.1 CRM</span>
+                <span>v3.2 CRM</span>
                 {DataManager.isOnline ? (
                     <span className="flex items-center gap-1 text-green-600 font-medium">
                         <div className="w-2 h-2 rounded-full bg-green-500"></div> Online
@@ -377,45 +377,45 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-between px-2 py-2 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] overflow-x-auto no-scrollbar">
-            <button onClick={() => setCurrentView('DASHBOARD')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-400'}`}>
-                <Icons.Home /> <span className="mt-1">Início</span>
+      {/* Mobile Bottom Nav - Updated for Robustness */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center px-2 py-2 z-50 overflow-x-auto gap-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+            <button onClick={() => setCurrentView('DASHBOARD')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center justify-center p-1 rounded-lg transition-colors ${currentView === 'DASHBOARD' ? 'text-primary bg-primary/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                <Icons.Home /> <span className="text-[10px] font-medium mt-1">Início</span>
             </button>
             
             {canAccessReports && (
-                <button onClick={() => setCurrentView('REPORTS')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-400'}`}>
-                    <Icons.BarChart /> <span className="mt-1">Relat.</span>
+                <button onClick={() => setCurrentView('REPORTS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center justify-center p-1 rounded-lg transition-colors ${currentView === 'REPORTS' ? 'text-primary bg-primary/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Icons.BarChart /> <span className="text-[10px] font-medium mt-1">Relat.</span>
                 </button>
             )}
             
             {canAccessDrivers && (
-                <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-400'}`}>
-                    <Icons.Users /> <span className="mt-1">Mot.</span>
+                <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center justify-center p-1 rounded-lg transition-colors ${currentView === 'DRIVERS' ? 'text-primary bg-primary/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Icons.Users /> <span className="text-[10px] font-medium mt-1">Mot.</span>
                 </button>
             )}
 
             {canAccessClients && (
-                <button onClick={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'CLIENTS' ? 'text-primary' : 'text-gray-400'}`}>
-                    <Icons.Building /> <span className="mt-1">Cli.</span>
+                <button onClick={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center justify-center p-1 rounded-lg transition-colors ${currentView === 'CLIENTS' ? 'text-primary bg-primary/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Icons.Building /> <span className="text-[10px] font-medium mt-1">Cli.</span>
                 </button>
             )}
             
             {canAccessPayroll && (
-                <button onClick={() => setCurrentView('PAYROLL')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-400'}`}>
-                    <Icons.DollarSign /> <span className="mt-1">Folha</span>
+                <button onClick={() => setCurrentView('PAYROLL')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center justify-center p-1 rounded-lg transition-colors ${currentView === 'PAYROLL' ? 'text-primary bg-primary/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Icons.DollarSign /> <span className="text-[10px] font-medium mt-1">Folha</span>
                 </button>
             )}
 
             {canAccessSettings && (
-                <button onClick={() => setCurrentView('SETTINGS')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'SETTINGS' ? 'text-primary' : 'text-gray-400'}`}>
-                    <Icons.Settings /> <span className="mt-1">Config</span>
+                <button onClick={() => setCurrentView('SETTINGS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center justify-center p-1 rounded-lg transition-colors ${currentView === 'SETTINGS' ? 'text-primary bg-primary/5' : 'text-gray-400 hover:text-gray-600'}`}>
+                    <Icons.Settings /> <span className="text-[10px] font-medium mt-1">Config</span>
                 </button>
             )}
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
             {currentView === 'DASHBOARD' && (
                 <Dashboard 
