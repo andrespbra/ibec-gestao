@@ -378,23 +378,38 @@ const App: React.FC = () => {
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-            <button onClick={() => setCurrentView('DASHBOARD')} className={`flex flex-col items-center text-xs ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-400'}`}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-between px-2 py-2 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] overflow-x-auto no-scrollbar">
+            <button onClick={() => setCurrentView('DASHBOARD')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-400'}`}>
                 <Icons.Home /> <span className="mt-1">Início</span>
             </button>
+            
             {canAccessReports && (
-                <button onClick={() => setCurrentView('REPORTS')} className={`flex flex-col items-center text-xs ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-400'}`}>
+                <button onClick={() => setCurrentView('REPORTS')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-400'}`}>
                     <Icons.BarChart /> <span className="mt-1">Relat.</span>
                 </button>
             )}
+            
             {canAccessDrivers && (
-                <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex flex-col items-center text-xs ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-400'}`}>
+                <button onClick={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-400'}`}>
                     <Icons.Users /> <span className="mt-1">Mot.</span>
                 </button>
             )}
-             {canAccessPayroll && (
-                <button onClick={() => setCurrentView('PAYROLL')} className={`flex flex-col items-center text-xs ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-400'}`}>
+
+            {canAccessClients && (
+                <button onClick={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'CLIENTS' ? 'text-primary' : 'text-gray-400'}`}>
+                    <Icons.Building /> <span className="mt-1">Cli.</span>
+                </button>
+            )}
+            
+            {canAccessPayroll && (
+                <button onClick={() => setCurrentView('PAYROLL')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-400'}`}>
                     <Icons.DollarSign /> <span className="mt-1">Folha</span>
+                </button>
+            )}
+
+            {canAccessSettings && (
+                <button onClick={() => setCurrentView('SETTINGS')} className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] ${currentView === 'SETTINGS' ? 'text-primary' : 'text-gray-400'}`}>
+                    <Icons.Settings /> <span className="mt-1">Config</span>
                 </button>
             )}
       </div>
