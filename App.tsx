@@ -11,11 +11,12 @@ import { NewClient } from './components/NewClient';
 import { Payroll } from './components/Payroll';
 import { Reports } from './components/Reports';
 import { FixedContracts } from './components/FixedContracts';
+import { CashFlow } from './components/CashFlow';
 import { Login } from './components/Login';
 import { Icons } from './components/Components';
 import { DataManager } from './services/dataManager';
 
-type ViewState = 'DASHBOARD' | 'NEW_REQUEST' | 'SETTINGS' | 'DRIVERS' | 'NEW_DRIVER' | 'CLIENTS' | 'NEW_CLIENT' | 'PAYROLL' | 'REPORTS' | 'FIXED_CONTRACTS';
+type ViewState = 'DASHBOARD' | 'NEW_REQUEST' | 'SETTINGS' | 'DRIVERS' | 'NEW_DRIVER' | 'CLIENTS' | 'NEW_CLIENT' | 'PAYROLL' | 'REPORTS' | 'FIXED_CONTRACTS' | 'CASH_FLOW';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
@@ -146,9 +147,11 @@ const App: React.FC = () => {
     return <Login onLogin={(user) => setCurrentUser(user)} />;
   }
 
-  const canAccessReports = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
-  // FIX: Only ADMIN can access Fixed Contracts
-  const canAccessFixed = currentUser.role === 'ADMIN';
+  const isAdmin = currentUser.role === 'ADMIN';
+  const isOperational = currentUser.role === 'OPERATIONAL';
+  const canAccessReports = isAdmin || isOperational;
+  const canAccessFixed = isAdmin;
+  const canAccessCashFlow = isAdmin || isOperational;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col md:flex-row">
@@ -169,11 +172,12 @@ const App: React.FC = () => {
         <nav className="flex-1 p-4 space-y-2">
             <button onClick={() => setCurrentView('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'DASHBOARD' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Home /> Dashboard</button>
             {canAccessReports && <button onClick={() => setCurrentView('REPORTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'REPORTS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.BarChart /> Relatórios</button>}
+            {canAccessCashFlow && <button onClick={() => setCurrentView('CASH_FLOW')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'CASH_FLOW' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.DollarSign /> Fluxo de Caixa</button>}
             {canAccessFixed && <button onClick={() => setCurrentView('FIXED_CONTRACTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'FIXED_CONTRACTS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Building /> Contratos Fixos</button>}
             <button onClick={() => setCurrentView('DRIVERS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'DRIVERS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Users /> Motoristas</button>
             <button onClick={() => setCurrentView('CLIENTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'CLIENTS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Building /> Clientes</button>
             <button onClick={() => setCurrentView('PAYROLL')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'PAYROLL' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.DollarSign /> Folha Pgto.</button>
-            {currentUser.role === 'ADMIN' && <button onClick={() => setCurrentView('SETTINGS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'SETTINGS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Settings /> Configurações</button>}
+            {isAdmin && <button onClick={() => setCurrentView('SETTINGS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'SETTINGS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Settings /> Configurações</button>}
         </nav>
         <div className="p-4 border-t border-gray-100">
             <button onClick={() => setCurrentUser(null)} className="w-full text-left px-4 text-gray-500 hover:text-red-500 font-medium">Sair do Sistema</button>
@@ -183,7 +187,7 @@ const App: React.FC = () => {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center px-2 py-2 z-50 overflow-x-auto gap-2">
             <button onClick={() => setCurrentView('DASHBOARD')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-400'}`}><Icons.Home /><span className="text-[10px]">Início</span></button>
             {canAccessReports && <button onClick={() => setCurrentView('REPORTS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-400'}`}><Icons.BarChart /><span className="text-[10px]">Relat.</span></button>}
-            {canAccessFixed && <button onClick={() => setCurrentView('FIXED_CONTRACTS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'FIXED_CONTRACTS' ? 'text-primary' : 'text-gray-400'}`}><Icons.Building /><span className="text-[10px]">Fixos</span></button>}
+            {canAccessCashFlow && <button onClick={() => setCurrentView('CASH_FLOW')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'CASH_FLOW' ? 'text-primary' : 'text-gray-400'}`}><Icons.DollarSign /><span className="text-[10px]">Caixa</span></button>}
             <button onClick={() => setCurrentView('DRIVERS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-400'}`}><Icons.Users /><span className="text-[10px]">Mot.</span></button>
             <button onClick={() => setCurrentView('PAYROLL')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-400'}`}><Icons.DollarSign /><span className="text-[10px]">Folha</span></button>
       </div>
@@ -191,6 +195,7 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 md:p-8 pb-24 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
             {currentView === 'DASHBOARD' && <Dashboard requests={requests} drivers={drivers} currentUser={currentUser} onNewRequest={() => setCurrentView('NEW_REQUEST')} onUpdateStatus={handleStatusUpdate} onDeleteRequest={(id) => DataManager.deleteRequest(id)} />}
+            {currentView === 'CASH_FLOW' && canAccessCashFlow && <CashFlow />}
             {currentView === 'FIXED_CONTRACTS' && canAccessFixed && <FixedContracts contracts={fixedContracts} onAddContract={handleAddFixedContract} onUpdateContract={handleUpdateFixedContract} onDeleteContract={handleDeleteFixedContract} />}
             {currentView === 'NEW_REQUEST' && <NewRequest rates={rates} drivers={drivers} clients={clients} existingRequests={requests} initialData={editingRequest} currentUser={currentUser} onSubmit={handleSaveRequest} onCancel={() => { setCurrentView('DASHBOARD'); setEditingRequest(undefined); }} />}
             {currentView === 'DRIVERS' && <Drivers drivers={drivers} onNewDriver={() => setCurrentView('NEW_DRIVER')} onEditDriver={(d) => { setEditingDriver(d); setCurrentView('NEW_DRIVER'); }} />}

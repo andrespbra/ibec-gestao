@@ -1,5 +1,5 @@
 
-import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract } from '../types';
+import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract, FinancialTransaction } from '../types';
 
 const STORAGE_KEYS = {
   RATES: 'logitrack_rates',
@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
   CLIENTS: 'logitrack_clients',
   EXPENSES: 'logitrack_expenses',
   USERS: 'logitrack_users',
-  CONTRACTS: 'logitrack_contracts'
+  CONTRACTS: 'logitrack_contracts',
+  TRANSACTIONS: 'logitrack_transactions'
 };
 
 const INITIAL_USERS: User[] = [
@@ -55,6 +56,33 @@ export const DataManager = {
   async deleteFixedContract(id: string) {
     const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTRACTS) || '[]');
     localStorage.setItem(STORAGE_KEYS.CONTRACTS, JSON.stringify(current.filter((i: any) => i.id !== id)));
+  },
+
+  // --- Fluxo de Caixa Methods ---
+  async fetchTransactions(): Promise<FinancialTransaction[]> {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.TRANSACTIONS) || '[]') as FinancialTransaction[];
+  },
+
+  async addTransaction(item: Omit<FinancialTransaction, 'id' | 'createdAt'>) {
+    const newItem: FinancialTransaction = {
+      ...item,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString()
+    };
+    const current = await this.fetchTransactions();
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([newItem, ...current]));
+    return newItem;
+  },
+
+  async updateTransaction(item: FinancialTransaction) {
+    const current = await this.fetchTransactions();
+    const updated = current.map(i => i.id === item.id ? item : i);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updated));
+  },
+
+  async deleteTransaction(id: string) {
+    const current = await this.fetchTransactions();
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(current.filter(i => i.id !== id)));
   },
 
   async fetchAllData() {

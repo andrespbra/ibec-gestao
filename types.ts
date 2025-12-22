@@ -58,6 +58,26 @@ export interface FixedContract {
   staff: StaffExpense[]; 
 }
 
+// --- Novos Tipos para Fluxo de Caixa ---
+export type TransactionType = 'ENTRADA' | 'SAIDA';
+export type TransactionStatus = 'PREVISTO' | 'REALIZADO';
+export type FinancialCategory = 
+  | 'FATURAMENTO' | 'CONTRATO_FIXO' | 'APORTE' 
+  | 'COMBUSTIVEL' | 'SALARIO' | 'ALUGUEL' | 'IMPOSTO' 
+  | 'MANUTENCAO' | 'COMISSAO' | 'OUTROS';
+
+export interface FinancialTransaction {
+  id: string;
+  date: string; // ISO Date
+  type: TransactionType;
+  category: FinancialCategory;
+  description: string;
+  value: number;
+  status: TransactionStatus;
+  paymentMethod: 'PIX' | 'CARTAO' | 'BOLETO' | 'DINHEIRO';
+  createdAt: string;
+}
+
 export interface VehicleRate {
   type: VehicleType;
   label: string;
