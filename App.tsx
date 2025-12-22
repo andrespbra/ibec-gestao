@@ -81,7 +81,6 @@ const App: React.FC = () => {
       DataManager.updateDriver(updated);
     } else {
       DataManager.addDriver(data);
-      // Re-load to get the generated fields
       DataManager.fetchAllData().then(d => setDrivers(d.drivers));
     }
     setCurrentView('DRIVERS');
@@ -197,7 +196,7 @@ const App: React.FC = () => {
             {currentView === 'NEW_DRIVER' && <NewDriver rates={rates} initialData={editingDriver} onSubmit={handleSaveDriver} onCancel={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} />}
             {currentView === 'CLIENTS' && <Clients clients={clients} onNewClient={() => setCurrentView('NEW_CLIENT')} onEditClient={(c) => { setEditingClient(c); setCurrentView('NEW_CLIENT'); }} />}
             {currentView === 'NEW_CLIENT' && <NewClient initialData={editingClient} onSubmit={handleSaveClient} onCancel={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} />}
-            {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={(e) => { DataManager.addExpense(e); }} />}
+            {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={(e: Omit<DriverExpense, 'id'>) => { DataManager.addExpense(e); }} />}
             {currentView === 'REPORTS' && <Reports requests={requests} clients={clients} onEditRequest={(r) => { setEditingRequest(r); setCurrentView('NEW_REQUEST'); }} onDeleteRequest={(id) => DataManager.deleteRequest(id)} onPaymentUpdate={(id, d) => DataManager.updateRequest({...requests.find(r => r.id === id)!, paymentDate: d})} />}
             {currentView === 'SETTINGS' && <Settings rates={rates} onUpdateRate={(r) => DataManager.updateRate(r)} />}
         </div>

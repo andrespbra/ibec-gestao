@@ -1,7 +1,6 @@
 
 import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract } from '../types';
 
-// Keys for LocalStorage
 const STORAGE_KEYS = {
   RATES: 'logitrack_rates',
   REQUESTS: 'logitrack_requests',
@@ -60,11 +59,11 @@ export const DataManager = {
 
   async fetchAllData() {
     return {
-      requests: JSON.parse(localStorage.getItem(STORAGE_KEYS.REQUESTS) || '[]'),
+      requests: JSON.parse(localStorage.getItem(STORAGE_KEYS.REQUESTS) || '[]') as TransportRequest[],
       drivers: JSON.parse(localStorage.getItem(STORAGE_KEYS.DRIVERS) || '[]'),
       clients: JSON.parse(localStorage.getItem(STORAGE_KEYS.CLIENTS) || '[]'),
-      expenses: JSON.parse(localStorage.getItem(STORAGE_KEYS.EXPENSES) || '[]'),
-      rates: JSON.parse(localStorage.getItem(STORAGE_KEYS.RATES) || JSON.stringify(INITIAL_RATES))
+      expenses: JSON.parse(localStorage.getItem(STORAGE_KEYS.EXPENSES) || '[]') as DriverExpense[],
+      rates: JSON.parse(localStorage.getItem(STORAGE_KEYS.RATES) || JSON.stringify(INITIAL_RATES)) as VehicleRate[]
     };
   },
 

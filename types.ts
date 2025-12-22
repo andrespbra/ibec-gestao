@@ -11,9 +11,9 @@ export interface User {
   id: string;
   username: string;
   role: UserRole;
-  clientId?: string; // If role is CLIENT, links to specific client
+  clientId?: string; 
   name: string;
-  password?: string; // Optional in interface for security, but used in management
+  password?: string; 
   mustChangePassword?: boolean;
 }
 
@@ -28,23 +28,23 @@ export interface TransportRequest {
   driverFee: number;
   clientCharge: number;
   status: RequestStatus;
-  createdAt: string; // ISO String
-  scheduledFor?: string; // ISO String or DateTime string
+  createdAt: string; 
+  scheduledFor?: string; 
   driverId?: string;
   activityType?: ActivityType;
   contactOnSite?: string;
   observations?: string;
-  waypoints?: string[]; // Intermediate addresses
-  paymentDate?: string; // ISO String, indicates when the client paid
-  commissionedName?: string; // Name of the person receiving commission
-  commissionPercentage?: number; // Percentage of commission
+  waypoints?: string[]; 
+  paymentDate?: string; 
+  commissionedName?: string; 
+  commissionPercentage?: number; 
 }
 
 export interface StaffExpense {
   id: string;
   employeeName: string;
   role: string;
-  department?: string; // New field as requested
+  department?: string; 
   salary: number;
   createdAt: string;
 }
@@ -55,14 +55,14 @@ export interface FixedContract {
   contractValue: number;
   invoiceDay: number;
   createdAt: string;
-  staff: StaffExpense[]; // Unified: each contract has its own staff/expenses
+  staff: StaffExpense[]; 
 }
 
 export interface VehicleRate {
   type: VehicleType;
   label: string;
-  costPerKm: number; // Driver pay
-  chargePerKm: number; // Client charge
+  costPerKm: number; 
+  chargePerKm: number; 
   baseFee: number;
 }
 
