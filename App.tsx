@@ -147,7 +147,8 @@ const App: React.FC = () => {
   }
 
   const canAccessReports = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
-  const canAccessFixed = currentUser.role === 'ADMIN' || currentUser.role === 'OPERATIONAL';
+  // FIX: Only ADMIN can access Fixed Contracts
+  const canAccessFixed = currentUser.role === 'ADMIN';
 
   return (
     <div className="min-h-screen bg-surface flex flex-col md:flex-row">
