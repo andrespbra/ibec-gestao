@@ -176,10 +176,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </Button>
           
           <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-             <p className="text-xs text-gray-400 mb-2 font-medium">DADOS DE ACESSO (DEMO)</p>
+             <p className="text-xs text-gray-400 mb-2 font-medium"></p>
              <div className="flex justify-center gap-4 text-xs text-gray-500">
-                 <span className="bg-gray-100 px-2 py-1 rounded">admin / admin</span>
-                 <span className="bg-gray-100 px-2 py-1 rounded">edna / 123</span>
+                 <span className="bg-gray-100 px-2 py-1 rounded"></span>
+                 <span className="bg-gray-100 px-2 py-1 rounded"></span>
              </div>
           </div>
         </form>
