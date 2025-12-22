@@ -1,6 +1,5 @@
 
-import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { TransportRequest, Driver, Client, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract, StaffExpense } from '../types';
+import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract } from '../types';
 
 // Keys for LocalStorage
 const STORAGE_KEYS = {
@@ -21,7 +20,7 @@ const INITIAL_USERS: User[] = [
 ];
 
 export const DataManager = {
-  isOnline: isSupabaseConfigured,
+  isOnline: false,
 
   async fetchUsers(): Promise<User[]> {
       const stored = localStorage.getItem(STORAGE_KEYS.USERS);
@@ -69,45 +68,59 @@ export const DataManager = {
     };
   },
 
-  async add(table: string, storageKey: string, item: any) {
+  async add(storageKey: string, item: any) {
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     localStorage.setItem(storageKey, JSON.stringify([item, ...current]));
   },
 
-  async update(table: string, storageKey: string, item: any, idField: string = 'id') {
+  async update(storageKey: string, item: any, idField: string = 'id') {
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const updated = current.map((i: any) => i[idField] === item[idField] ? item : i);
     localStorage.setItem(storageKey, JSON.stringify(updated));
   },
 
-  async delete(table: string, storageKey: string, id: string) {
+  async delete(storageKey: string, id: string) {
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     localStorage.setItem(storageKey, JSON.stringify(current.filter((i: any) => i.id !== id)));
   },
 
-  async addRequest(item: TransportRequest) { await this.add('requests', STORAGE_KEYS.REQUESTS, item); },
-  async updateRequest(item: TransportRequest) { await this.update('requests', STORAGE_KEYS.REQUESTS, item); },
-  async deleteRequest(id: string) { await this.delete('requests', STORAGE_KEYS.REQUESTS, id); },
+  async addRequest(item: TransportRequest) { await this.add(STORAGE_KEYS.REQUESTS, item); },
+  async updateRequest(item: TransportRequest) { await this.update(STORAGE_KEYS.REQUESTS, item); },
+  async deleteRequest(id: string) { await this.delete(STORAGE_KEYS.REQUESTS, id); },
+  
+  async addDriver(item: any) { 
+    const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString() };
+    await this.add(STORAGE_KEYS.DRIVERS, newItem); 
+  },
+  async updateDriver(item: any) { await this.update(STORAGE_KEYS.DRIVERS, item); },
+  
+  async addClient(item: any) { 
+    const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString() };
+    await this.add(STORAGE_KEYS.CLIENTS, newItem); 
+  },
+  async updateClient(item: any) { await this.update(STORAGE_KEYS.CLIENTS, item); },
+
   async updateRate(item: VehicleRate) {
     const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.RATES) || JSON.stringify(INITIAL_RATES));
     const updated = current.map((r: VehicleRate) => r.type === item.type ? item : r);
     localStorage.setItem(STORAGE_KEYS.RATES, JSON.stringify(updated));
   },
-  async addExpense(item: DriverExpense) { await this.add('expenses', STORAGE_KEYS.EXPENSES, item); },
+  
+  async addExpense(item: Omit<DriverExpense, 'id'>) { 
+    const newItem = { ...item, id: Math.random().toString(36).substr(2, 9) };
+    await this.add(STORAGE_KEYS.EXPENSES, newItem); 
+  },
 
-  // Fix: Added missing User management methods
-  async addUser(item: User) { await this.add('users', STORAGE_KEYS.USERS, item); },
-  async updateUser(item: User) { await this.update('users', STORAGE_KEYS.USERS, item); },
-  async deleteUser(id: string) { await this.delete('users', STORAGE_KEYS.USERS, id); },
+  async addUser(item: User) { await this.add(STORAGE_KEYS.USERS, item); },
+  async updateUser(item: User) { await this.update(STORAGE_KEYS.USERS, item); },
+  async deleteUser(id: string) { await this.delete(STORAGE_KEYS.USERS, id); },
 
-  // Fix: Added missing changePassword method for Login component
   async changePassword(userId: string, newPassword: string) {
     const users = await this.fetchUsers();
     const updated = users.map(u => u.id === userId ? { ...u, password: newPassword, mustChangePassword: false } : u);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
   },
 
-  // Fix: Added missing updateRequestStatus method as requested by App component
   async updateRequestStatus(id: string, newStatus: RequestStatus, requests: TransportRequest[]) {
     const request = requests.find(r => r.id === id);
     if (request) {

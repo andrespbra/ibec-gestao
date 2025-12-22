@@ -19,7 +19,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
   const [showAddForm, setShowAddForm] = useState(false);
   const [contractForm, setContractForm] = useState({ clientName: '', contractValue: '', invoiceDay: '10' });
   
-  // State for the NEW contract's initial staff members
+  // State for the NEW contract's initial staff members (as requested: Nome, Departamento, Valor)
   const [initialStaff, setInitialStaff] = useState<Omit<StaffExpense, 'id' | 'createdAt'>[]>([]);
   const [newStaffMember, setNewStaffMember] = useState({ employeeName: '', department: '', salary: '' });
 
@@ -37,11 +37,9 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
   const handleContractSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Process initial staff to give them temporary IDs/Dates if needed by your backend logic
     const processedStaff: StaffExpense[] = initialStaff.map(s => ({
       ...s,
       id: Math.random().toString(36).substr(2, 9),
-      role: s.department || 'Pessoal', // Map department to role if needed, or keep both
       createdAt: new Date().toISOString()
     }));
 
@@ -52,7 +50,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
       staff: processedStaff
     });
 
-    // Reset everything
     setContractForm({ clientName: '', contractValue: '', invoiceDay: '10' });
     setInitialStaff([]);
     setShowAddForm(false);
@@ -64,7 +61,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
     setInitialStaff([...initialStaff, {
       employeeName: newStaffMember.employeeName,
       department: newStaffMember.department,
-      role: newStaffMember.department, // Using department as role for now
+      role: newStaffMember.department || 'Pessoal',
       salary: parseFloat(newStaffMember.salary) || 0
     }]);
 
@@ -117,7 +114,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
         </Button>
       </div>
 
-      {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4 border-l-4 border-l-primary bg-white">
           <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Receita Contratual Total</span>
@@ -138,7 +134,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
         </Card>
       </div>
 
-      {/* Add Contract Form - Enhanced with Staff Expenses */}
       {showAddForm && (
         <Card className="p-6 border-2 border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-300">
           <h3 className="font-bold text-primary mb-6 uppercase text-sm tracking-widest flex items-center gap-2">
@@ -146,7 +141,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
           </h3>
           
           <form onSubmit={handleContractSubmit} className="space-y-8">
-            {/* Basic Contract Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Input 
                 label="Nome do Cliente" 
@@ -174,23 +168,22 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
               />
             </div>
 
-            {/* Staff Expenses Section Within Creation Form */}
             <div className="bg-white p-5 rounded-xl border border-primary/10 shadow-inner">
                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                 <Icons.Users /> Despesas de Pessoal Alocado (Opcional)
+                 <Icons.Users /> Despesas com Contrato (Funcionários)
                </h4>
                
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <Input 
                     label="Nome do Funcionário"
-                    placeholder="Ex: João da Silva"
+                    placeholder="Nome completo"
                     value={newStaffMember.employeeName}
                     onChange={e => setNewStaffMember({...newStaffMember, employeeName: e.target.value})}
                     className="text-sm"
                   />
                   <Input 
                     label="Departamento"
-                    placeholder="Ex: Operacional"
+                    placeholder="Setor de atuação"
                     value={newStaffMember.department}
                     onChange={e => setNewStaffMember({...newStaffMember, department: e.target.value})}
                     className="text-sm"
@@ -198,17 +191,16 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                   <Input 
                     label="Valor da Despesa (R$)"
                     type="number"
-                    placeholder="0.00"
+                    placeholder="Salário ou custo"
                     value={newStaffMember.salary}
                     onChange={e => setNewStaffMember({...newStaffMember, salary: e.target.value})}
                     className="text-sm"
                   />
-                  <Button type="button" variant="outline" onClick={addStaffToNewContract} className="w-full text-xs">
-                    Adicionar à Lista
+                  <Button type="button" variant="secondary" onClick={addStaffToNewContract} className="w-full text-xs">
+                    Adicionar Despesa
                   </Button>
                </div>
 
-               {/* Initial Staff List Table Preview */}
                {initialStaff.length > 0 && (
                  <div className="mt-4 overflow-hidden border border-gray-100 rounded-lg">
                     <table className="w-full text-xs text-left">
@@ -245,13 +237,12 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
 
             <div className="flex justify-end gap-3 pt-4 border-t border-primary/10">
               <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)}>Descartar</Button>
-              <Button type="submit" className="px-10">Salvar Contrato e Despesas</Button>
+              <Button type="submit" className="px-10">Salvar Contrato Unificado</Button>
             </div>
           </form>
         </Card>
       )}
 
-      {/* Contracts List */}
       <div className="grid grid-cols-1 gap-6">
         {contracts.length === 0 ? (
           <Card className="p-12 text-center text-gray-400 border-dashed bg-gray-50">
@@ -265,7 +256,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
 
             return (
               <Card key={contract.id} className="overflow-hidden border-t-4 border-t-primary">
-                {/* Contract Header */}
                 <div className="p-5 bg-gray-50/50 border-b border-gray-100 flex flex-col md:flex-row justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
@@ -298,7 +288,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                   </div>
                 </div>
 
-                {/* Staff Section */}
                 <div className="p-5 bg-white">
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="text-sm font-bold text-gray-700 uppercase tracking-widest flex items-center gap-2">
@@ -312,7 +301,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                     </button>
                   </div>
 
-                  {/* Add Staff Form Inline */}
                   {addingStaffToId === contract.id && (
                     <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-100 animate-in fade-in zoom-in-95 duration-200">
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -342,7 +330,6 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                     </div>
                   )}
 
-                  {/* Staff Table */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead className="bg-gray-50 text-gray-400 uppercase font-bold">

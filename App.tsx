@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { INITIAL_RATES, TransportRequest, VehicleRate, RequestStatus, Driver, Client, DriverExpense, User, FixedContract, StaffExpense } from './types';
+import { INITIAL_RATES, TransportRequest, VehicleRate, RequestStatus, Driver, Client, DriverExpense, User, FixedContract } from './types';
 import { Dashboard } from './components/Dashboard';
 import { NewRequest } from './components/NewRequest';
 import { Settings } from './components/Settings';
@@ -46,7 +46,6 @@ const App: React.FC = () => {
         setClients(data.clients);
         setExpenses(data.expenses);
         
-        // Load Fixed Contracts from DataManager
         const fixedData = await DataManager.fetchFixedData();
         setFixedContracts(fixedData.contracts);
         
@@ -73,6 +72,33 @@ const App: React.FC = () => {
         DataManager.addRequest(newRequest);
         setCurrentView('DASHBOARD');
     }
+  };
+
+  const handleSaveDriver = (data: Omit<Driver, 'id' | 'createdAt'>) => {
+    if (editingDriver) {
+      const updated = { ...editingDriver, ...data };
+      setDrivers(drivers.map(d => d.id === updated.id ? updated : d));
+      DataManager.updateDriver(updated);
+    } else {
+      DataManager.addDriver(data);
+      // Re-load to get the generated fields
+      DataManager.fetchAllData().then(d => setDrivers(d.drivers));
+    }
+    setCurrentView('DRIVERS');
+    setEditingDriver(undefined);
+  };
+
+  const handleSaveClient = (data: Omit<Client, 'id' | 'createdAt'>) => {
+    if (editingClient) {
+      const updated = { ...editingClient, ...data };
+      setClients(clients.map(c => c.id === updated.id ? updated : c));
+      DataManager.updateClient(updated);
+    } else {
+      DataManager.addClient(data);
+      DataManager.fetchAllData().then(d => setClients(d.clients));
+    }
+    setCurrentView('CLIENTS');
+    setEditingClient(undefined);
   };
 
   const handleAddFixedContract = (data: Omit<FixedContract, 'id' | 'createdAt'>) => {
@@ -126,7 +152,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col md:flex-row">
-      {/* Mobile Navigation */}
       <div className="md:hidden bg-primary shadow-lg p-4 flex justify-between items-center sticky top-0 z-40 text-white">
         <div className="flex items-center gap-2 font-bold text-xl">
              <img src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" alt="Logo" className="h-8 w-auto bg-white/20 rounded p-0.5" />
@@ -135,7 +160,6 @@ const App: React.FC = () => {
         <button onClick={() => setCurrentUser(null)} className="text-blue-100 hover:text-white"><Icons.Home /></button>
       </div>
 
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0 h-screen shadow-sm z-30">
         <div className="p-6 border-b border-gray-100 flex flex-col items-center">
              <img src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" alt="CRM IBEC" className="h-14 w-auto object-contain" />
@@ -156,7 +180,6 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center px-2 py-2 z-50 overflow-x-auto gap-2">
             <button onClick={() => setCurrentView('DASHBOARD')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-400'}`}><Icons.Home /><span className="text-[10px]">Início</span></button>
             {canAccessReports && <button onClick={() => setCurrentView('REPORTS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-400'}`}><Icons.BarChart /><span className="text-[10px]">Relat.</span></button>}
@@ -169,9 +192,11 @@ const App: React.FC = () => {
         <div className="max-w-6xl mx-auto">
             {currentView === 'DASHBOARD' && <Dashboard requests={requests} drivers={drivers} currentUser={currentUser} onNewRequest={() => setCurrentView('NEW_REQUEST')} onUpdateStatus={handleStatusUpdate} onDeleteRequest={(id) => DataManager.deleteRequest(id)} />}
             {currentView === 'FIXED_CONTRACTS' && canAccessFixed && <FixedContracts contracts={fixedContracts} onAddContract={handleAddFixedContract} onUpdateContract={handleUpdateFixedContract} onDeleteContract={handleDeleteFixedContract} />}
-            {currentView === 'NEW_REQUEST' && <NewRequest rates={rates} drivers={drivers} clients={clients} existingRequests={requests} currentUser={currentUser} onSubmit={handleSaveRequest} onCancel={() => setCurrentView('DASHBOARD')} />}
+            {currentView === 'NEW_REQUEST' && <NewRequest rates={rates} drivers={drivers} clients={clients} existingRequests={requests} initialData={editingRequest} currentUser={currentUser} onSubmit={handleSaveRequest} onCancel={() => { setCurrentView('DASHBOARD'); setEditingRequest(undefined); }} />}
             {currentView === 'DRIVERS' && <Drivers drivers={drivers} onNewDriver={() => setCurrentView('NEW_DRIVER')} onEditDriver={(d) => { setEditingDriver(d); setCurrentView('NEW_DRIVER'); }} />}
+            {currentView === 'NEW_DRIVER' && <NewDriver rates={rates} initialData={editingDriver} onSubmit={handleSaveDriver} onCancel={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} />}
             {currentView === 'CLIENTS' && <Clients clients={clients} onNewClient={() => setCurrentView('NEW_CLIENT')} onEditClient={(c) => { setEditingClient(c); setCurrentView('NEW_CLIENT'); }} />}
+            {currentView === 'NEW_CLIENT' && <NewClient initialData={editingClient} onSubmit={handleSaveClient} onCancel={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} />}
             {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={(e) => { DataManager.addExpense(e); }} />}
             {currentView === 'REPORTS' && <Reports requests={requests} clients={clients} onEditRequest={(r) => { setEditingRequest(r); setCurrentView('NEW_REQUEST'); }} onDeleteRequest={(id) => DataManager.deleteRequest(id)} onPaymentUpdate={(id, d) => DataManager.updateRequest({...requests.find(r => r.id === id)!, paymentDate: d})} />}
             {currentView === 'SETTINGS' && <Settings rates={rates} onUpdateRate={(r) => DataManager.updateRate(r)} />}
