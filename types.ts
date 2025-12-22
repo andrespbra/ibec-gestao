@@ -1,5 +1,4 @@
 
-
 export type VehicleType = 'MOTO' | 'CARRO' | 'UTILITARIO' | 'CAMINHAO' | 'PRESSKIT';
 
 export type RequestStatus = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO';
@@ -39,6 +38,24 @@ export interface TransportRequest {
   paymentDate?: string; // ISO String, indicates when the client paid
   commissionedName?: string; // Name of the person receiving commission
   commissionPercentage?: number; // Percentage of commission
+}
+
+export interface StaffExpense {
+  id: string;
+  employeeName: string;
+  role: string;
+  department?: string; // New field as requested
+  salary: number;
+  createdAt: string;
+}
+
+export interface FixedContract {
+  id: string;
+  clientName: string;
+  contractValue: number;
+  invoiceDay: number;
+  createdAt: string;
+  staff: StaffExpense[]; // Unified: each contract has its own staff/expenses
 }
 
 export interface VehicleRate {
