@@ -20,7 +20,6 @@ const INITIAL_USERS: User[] = [
     { id: '4', username: 'edna', password: '123', role: 'ADMIN', name: 'Edna (Admin)', mustChangePassword: true }
 ];
 
-// Fix: Moving execute to a top-level function to ensure generic types are correctly recognized by TypeScript
 async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error: any }>, storageKey: string): Promise<T> {
   if (isSupabaseConfigured && supabase) {
     try {
@@ -32,19 +31,19 @@ async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error:
     }
   }
   const local = localStorage.getItem(storageKey);
-  return local ? JSON.parse(local) : [];
+  // Fix: use unknown cast to satisfy T constraint
+  return (local ? JSON.parse(local) : []) as unknown as T;
 }
 
 export const DataManager = {
   isOnline: isSupabaseConfigured,
 
-  // Fix: Use the correctly typed internal generic function
   execute: executeInternal,
 
   async fetchUsers(): Promise<User[]> {
     if (this.isOnline && supabase) {
       const { data } = await supabase.from('users').select('*');
-      if (data && data.length > 0) return data;
+      if (data && data.length > 0) return data as User[];
     }
     const stored = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!stored) {
@@ -58,7 +57,6 @@ export const DataManager = {
     const data = await this.fetchAllData();
     if (data.requests.length > 0) return;
 
-    // Se estiver vazio, popula o localStorage (ou Supabase se preferir implementar o seed remoto)
     const demoClients: Client[] = [{
       id: 'c1', name: 'Empresa Exemplo SA', cnpj: '12.345.678/0001-90', address: 'Av. Paulista, 1000, SP',
       costCenter: 'LOG-SP', contactName: 'Ricardo', contactPhone: '(11) 98888-7777', contactEmail: 'contato@exemplo.com',
@@ -92,43 +90,40 @@ export const DataManager = {
   },
 
   async fetchFixedData() {
-    // Fix: Call top-level executeInternal directly to resolve generic inference issues on Line 92
     const contracts = await executeInternal<FixedContract[]>(
-        supabase ? supabase.from('contracts').select('*') : Promise.resolve({data: null, error: null}),
+        (supabase ? supabase.from('contracts').select('*') : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.CONTRACTS
     );
     return { contracts: contracts || [] };
   },
 
   async fetchTransactions(): Promise<FinancialTransaction[]> {
-    // Fix: Call top-level executeInternal directly to resolve generic inference issues on Line 100
     const data = await executeInternal<FinancialTransaction[]>(
-        supabase ? supabase.from('transactions').select('*').order('date', { ascending: false }) : Promise.resolve({data: null, error: null}),
+        (supabase ? supabase.from('transactions').select('*').order('date', { ascending: false }) : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.TRANSACTIONS
     );
     return data || [];
   },
 
   async fetchAllData() {
-    // Fix: Call top-level executeInternal directly for all data fetches to solve "Untyped function calls" errors
     const requests = await executeInternal<TransportRequest[]>(
-        supabase ? supabase.from('requests').select('*').order('createdAt', { ascending: false }) : Promise.resolve({data: null, error: null}),
+        (supabase ? supabase.from('requests').select('*').order('createdAt', { ascending: false }) : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.REQUESTS
     );
     const drivers = await executeInternal<Driver[]>(
-        supabase ? supabase.from('drivers').select('*') : Promise.resolve({data: null, error: null}),
+        (supabase ? supabase.from('drivers').select('*') : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.DRIVERS
     );
     const clients = await executeInternal<Client[]>(
-        supabase ? supabase.from('clients').select('*') : Promise.resolve({data: null, error: null}),
+        (supabase ? supabase.from('clients').select('*') : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.CLIENTS
     );
     const expenses = await executeInternal<DriverExpense[]>(
-        supabase ? supabase.from('expenses').select('*') : Promise.resolve({data: null, error: null}),
+        (supabase ? supabase.from('expenses').select('*') : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.EXPENSES
     );
     const rates = await executeInternal<VehicleRate[]>(
-        supabase ? supabase.from('rates').select('*') : Promise.resolve({data: null, error: null}),
+        (supabase ? supabase.from('rates').select('*') : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.RATES
     );
 
@@ -141,7 +136,6 @@ export const DataManager = {
     };
   },
 
-  // Operações Genéricas
   async add(table: string, storageKey: string, item: any) {
     if (this.isOnline && supabase) {
         await supabase.from(table).insert([item]);
@@ -167,7 +161,6 @@ export const DataManager = {
     localStorage.setItem(storageKey, JSON.stringify(current.filter((i: any) => i[idField] !== id)));
   },
 
-  // Wrappers Específicos
   async addRequest(item: TransportRequest) { await this.add('requests', STORAGE_KEYS.REQUESTS, item); },
   async updateRequest(item: TransportRequest) { await this.update('requests', STORAGE_KEYS.REQUESTS, item); },
   async deleteRequest(id: string) { await this.delete('requests', STORAGE_KEYS.REQUESTS, id); },

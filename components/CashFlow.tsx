@@ -22,7 +22,7 @@ export const CashFlow: React.FC = () => {
 
   // Filter State
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [filterYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     loadTransactions();
@@ -89,9 +89,6 @@ export const CashFlow: React.FC = () => {
     let realizedOutflow = 0;
 
     transactions.forEach(t => {
-      // For global stats we consider everything if we want to show balance, 
-      // but usually dashboard shows current month or total.
-      // Let's do current month for the cards.
       const d = new Date(t.date);
       if (d.getMonth() === filterMonth && d.getFullYear() === filterYear) {
         if (t.type === 'ENTRADA') {
@@ -140,7 +137,6 @@ export const CashFlow: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4 border-l-4 border-l-green-500">
           <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Entradas do Mês</span>
@@ -241,7 +237,6 @@ export const CashFlow: React.FC = () => {
         </Card>
       )}
 
-      {/* Transactions Table */}
       <Card className="overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
