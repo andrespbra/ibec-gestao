@@ -1,5 +1,6 @@
 
-import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract, FinancialTransaction } from '../types';
+import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract, FinancialTransaction, Driver, Client } from '../types';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const STORAGE_KEYS = {
   RATES: 'logitrack_rates',
@@ -19,16 +20,70 @@ const INITIAL_USERS: User[] = [
     { id: '4', username: 'edna', password: '123', role: 'ADMIN', name: 'Edna (Admin)', mustChangePassword: true }
 ];
 
+// Fix: Moving execute to a top-level function to ensure generic types are correctly recognized by TypeScript
+async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error: any }>, storageKey: string): Promise<T> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabaseCall;
+      if (error) throw error;
+      return data as T;
+    } catch (err) {
+      console.warn(`Supabase error for ${storageKey}, falling back to local:`, err);
+    }
+  }
+  const local = localStorage.getItem(storageKey);
+  return local ? JSON.parse(local) : [];
+}
+
 export const DataManager = {
-  isOnline: false,
+  isOnline: isSupabaseConfigured,
+
+  // Fix: Use the correctly typed internal generic function
+  execute: executeInternal,
 
   async fetchUsers(): Promise<User[]> {
-      const stored = localStorage.getItem(STORAGE_KEYS.USERS);
-      if (!stored) {
-          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-          return INITIAL_USERS;
-      }
-      return JSON.parse(stored);
+    if (this.isOnline && supabase) {
+      const { data } = await supabase.from('users').select('*');
+      if (data && data.length > 0) return data;
+    }
+    const stored = localStorage.getItem(STORAGE_KEYS.USERS);
+    if (!stored) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        return INITIAL_USERS;
+    }
+    return JSON.parse(stored);
+  },
+
+  async seedData() {
+    const data = await this.fetchAllData();
+    if (data.requests.length > 0) return;
+
+    // Se estiver vazio, popula o localStorage (ou Supabase se preferir implementar o seed remoto)
+    const demoClients: Client[] = [{
+      id: 'c1', name: 'Empresa Exemplo SA', cnpj: '12.345.678/0001-90', address: 'Av. Paulista, 1000, SP',
+      costCenter: 'LOG-SP', contactName: 'Ricardo', contactPhone: '(11) 98888-7777', contactEmail: 'contato@exemplo.com',
+      paymentDay: 10, createdAt: new Date().toISOString()
+    }];
+    const demoDrivers: Driver[] = [{
+      id: 'd1', name: 'Carlos Motorista', cpf: '123.456.789-00', address: 'Rua das Flores, 123',
+      vehicleType: 'MOTO', phone: '(11) 97777-6666', createdAt: new Date().toISOString(),
+      plate: 'ABC-1234', model: 'Honda CG', color: 'Vermelha'
+    }];
+    const demoRequests: TransportRequest[] = [{
+      id: 'r1', invoiceNumber: 'IBEC-001', clientName: 'Empresa Exemplo SA', origin: 'Av. Paulista, 1000',
+      destination: 'Rua Augusta, 500', vehicleType: 'MOTO', distanceKm: 5, driverFee: 15, clientCharge: 25,
+      status: 'CONCLUIDO', createdAt: new Date().toISOString(), driverId: 'd1'
+    }];
+
+    if (this.isOnline && supabase) {
+        await supabase.from('clients').insert(demoClients);
+        await supabase.from('drivers').insert(demoDrivers);
+        await supabase.from('requests').insert(demoRequests);
+    } else {
+        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(demoClients));
+        localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(demoDrivers));
+        localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(demoRequests));
+    }
   },
 
   async authenticate(username: string, password: string): Promise<User | null> {
@@ -37,115 +92,127 @@ export const DataManager = {
   },
 
   async fetchFixedData() {
-    return {
-      contracts: JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTRACTS) || '[]') as FixedContract[]
-    };
+    // Fix: Call top-level executeInternal directly to resolve generic inference issues on Line 92
+    const contracts = await executeInternal<FixedContract[]>(
+        supabase ? supabase.from('contracts').select('*') : Promise.resolve({data: null, error: null}),
+        STORAGE_KEYS.CONTRACTS
+    );
+    return { contracts: contracts || [] };
   },
 
-  async addFixedContract(item: FixedContract) {
-    const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTRACTS) || '[]');
-    localStorage.setItem(STORAGE_KEYS.CONTRACTS, JSON.stringify([item, ...current]));
-  },
-
-  async updateFixedContract(item: FixedContract) {
-    const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTRACTS) || '[]');
-    const updated = current.map((i: FixedContract) => i.id === item.id ? item : i);
-    localStorage.setItem(STORAGE_KEYS.CONTRACTS, JSON.stringify(updated));
-  },
-
-  async deleteFixedContract(id: string) {
-    const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTRACTS) || '[]');
-    localStorage.setItem(STORAGE_KEYS.CONTRACTS, JSON.stringify(current.filter((i: any) => i.id !== id)));
-  },
-
-  // --- Fluxo de Caixa Methods ---
   async fetchTransactions(): Promise<FinancialTransaction[]> {
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.TRANSACTIONS) || '[]') as FinancialTransaction[];
-  },
-
-  async addTransaction(item: Omit<FinancialTransaction, 'id' | 'createdAt'>) {
-    const newItem: FinancialTransaction = {
-      ...item,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
-    };
-    const current = await this.fetchTransactions();
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([newItem, ...current]));
-    return newItem;
-  },
-
-  async updateTransaction(item: FinancialTransaction) {
-    const current = await this.fetchTransactions();
-    const updated = current.map(i => i.id === item.id ? item : i);
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updated));
-  },
-
-  async deleteTransaction(id: string) {
-    const current = await this.fetchTransactions();
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(current.filter(i => i.id !== id)));
+    // Fix: Call top-level executeInternal directly to resolve generic inference issues on Line 100
+    const data = await executeInternal<FinancialTransaction[]>(
+        supabase ? supabase.from('transactions').select('*').order('date', { ascending: false }) : Promise.resolve({data: null, error: null}),
+        STORAGE_KEYS.TRANSACTIONS
+    );
+    return data || [];
   },
 
   async fetchAllData() {
+    // Fix: Call top-level executeInternal directly for all data fetches to solve "Untyped function calls" errors
+    const requests = await executeInternal<TransportRequest[]>(
+        supabase ? supabase.from('requests').select('*').order('createdAt', { ascending: false }) : Promise.resolve({data: null, error: null}),
+        STORAGE_KEYS.REQUESTS
+    );
+    const drivers = await executeInternal<Driver[]>(
+        supabase ? supabase.from('drivers').select('*') : Promise.resolve({data: null, error: null}),
+        STORAGE_KEYS.DRIVERS
+    );
+    const clients = await executeInternal<Client[]>(
+        supabase ? supabase.from('clients').select('*') : Promise.resolve({data: null, error: null}),
+        STORAGE_KEYS.CLIENTS
+    );
+    const expenses = await executeInternal<DriverExpense[]>(
+        supabase ? supabase.from('expenses').select('*') : Promise.resolve({data: null, error: null}),
+        STORAGE_KEYS.EXPENSES
+    );
+    const rates = await executeInternal<VehicleRate[]>(
+        supabase ? supabase.from('rates').select('*') : Promise.resolve({data: null, error: null}),
+        STORAGE_KEYS.RATES
+    );
+
     return {
-      requests: JSON.parse(localStorage.getItem(STORAGE_KEYS.REQUESTS) || '[]') as TransportRequest[],
-      drivers: JSON.parse(localStorage.getItem(STORAGE_KEYS.DRIVERS) || '[]'),
-      clients: JSON.parse(localStorage.getItem(STORAGE_KEYS.CLIENTS) || '[]'),
-      expenses: JSON.parse(localStorage.getItem(STORAGE_KEYS.EXPENSES) || '[]') as DriverExpense[],
-      rates: JSON.parse(localStorage.getItem(STORAGE_KEYS.RATES) || JSON.stringify(INITIAL_RATES)) as VehicleRate[]
+      requests: requests || [],
+      drivers: drivers || [],
+      clients: clients || [],
+      expenses: expenses || [],
+      rates: (rates && rates.length > 0) ? rates : INITIAL_RATES
     };
   },
 
-  async add(storageKey: string, item: any) {
+  // Operações Genéricas
+  async add(table: string, storageKey: string, item: any) {
+    if (this.isOnline && supabase) {
+        await supabase.from(table).insert([item]);
+    }
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     localStorage.setItem(storageKey, JSON.stringify([item, ...current]));
   },
 
-  async update(storageKey: string, item: any, idField: string = 'id') {
+  async update(table: string, storageKey: string, item: any, idField: string = 'id') {
+    if (this.isOnline && supabase) {
+        await supabase.from(table).update(item).eq(idField, item[idField]);
+    }
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const updated = current.map((i: any) => i[idField] === item[idField] ? item : i);
     localStorage.setItem(storageKey, JSON.stringify(updated));
   },
 
-  async delete(storageKey: string, id: string) {
+  async delete(table: string, storageKey: string, id: string, idField: string = 'id') {
+    if (this.isOnline && supabase) {
+        await supabase.from(table).delete().eq(idField, id);
+    }
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    localStorage.setItem(storageKey, JSON.stringify(current.filter((i: any) => i.id !== id)));
+    localStorage.setItem(storageKey, JSON.stringify(current.filter((i: any) => i[idField] !== id)));
   },
 
-  async addRequest(item: TransportRequest) { await this.add(STORAGE_KEYS.REQUESTS, item); },
-  async updateRequest(item: TransportRequest) { await this.update(STORAGE_KEYS.REQUESTS, item); },
-  async deleteRequest(id: string) { await this.delete(STORAGE_KEYS.REQUESTS, id); },
+  // Wrappers Específicos
+  async addRequest(item: TransportRequest) { await this.add('requests', STORAGE_KEYS.REQUESTS, item); },
+  async updateRequest(item: TransportRequest) { await this.update('requests', STORAGE_KEYS.REQUESTS, item); },
+  async deleteRequest(id: string) { await this.delete('requests', STORAGE_KEYS.REQUESTS, id); },
   
   async addDriver(item: any) { 
     const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString() };
-    await this.add(STORAGE_KEYS.DRIVERS, newItem); 
+    await this.add('drivers', STORAGE_KEYS.DRIVERS, newItem); 
   },
-  async updateDriver(item: any) { await this.update(STORAGE_KEYS.DRIVERS, item); },
+  async updateDriver(item: any) { await this.update('drivers', STORAGE_KEYS.DRIVERS, item); },
   
   async addClient(item: any) { 
     const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString() };
-    await this.add(STORAGE_KEYS.CLIENTS, newItem); 
+    await this.add('clients', STORAGE_KEYS.CLIENTS, newItem); 
   },
-  async updateClient(item: any) { await this.update(STORAGE_KEYS.CLIENTS, item); },
+  async updateClient(item: any) { await this.update('clients', STORAGE_KEYS.CLIENTS, item); },
 
-  async updateRate(item: VehicleRate) {
-    const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.RATES) || JSON.stringify(INITIAL_RATES));
-    const updated = current.map((r: VehicleRate) => r.type === item.type ? item : r);
-    localStorage.setItem(STORAGE_KEYS.RATES, JSON.stringify(updated));
+  async addTransaction(item: any) {
+    const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString() };
+    await this.add('transactions', STORAGE_KEYS.TRANSACTIONS, newItem);
   },
+  async updateTransaction(item: FinancialTransaction) { await this.update('transactions', STORAGE_KEYS.TRANSACTIONS, item); },
+  async deleteTransaction(id: string) { await this.delete('transactions', STORAGE_KEYS.TRANSACTIONS, id); },
+
+  async addFixedContract(item: FixedContract) { await this.add('contracts', STORAGE_KEYS.CONTRACTS, item); },
+  async updateFixedContract(item: FixedContract) { await this.update('contracts', STORAGE_KEYS.CONTRACTS, item); },
+  async deleteFixedContract(id: string) { await this.delete('contracts', STORAGE_KEYS.CONTRACTS, id); },
+
+  async updateRate(item: VehicleRate) { await this.update('rates', STORAGE_KEYS.RATES, item, 'type'); },
   
   async addExpense(item: Omit<DriverExpense, 'id'>) { 
     const newItem = { ...item, id: Math.random().toString(36).substr(2, 9) };
-    await this.add(STORAGE_KEYS.EXPENSES, newItem); 
+    await this.add('expenses', STORAGE_KEYS.EXPENSES, newItem); 
   },
 
-  async addUser(item: User) { await this.add(STORAGE_KEYS.USERS, item); },
-  async updateUser(item: User) { await this.update(STORAGE_KEYS.USERS, item); },
-  async deleteUser(id: string) { await this.delete(STORAGE_KEYS.USERS, id); },
+  async addUser(item: User) { await this.add('users', STORAGE_KEYS.USERS, item); },
+  async updateUser(item: User) { await this.update('users', STORAGE_KEYS.USERS, item); },
+  async deleteUser(id: string) { await this.delete('users', STORAGE_KEYS.USERS, id); },
 
   async changePassword(userId: string, newPassword: string) {
     const users = await this.fetchUsers();
-    const updated = users.map(u => u.id === userId ? { ...u, password: newPassword, mustChangePassword: false } : u);
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+    const user = users.find(u => u.id === userId);
+    if (user) {
+        const updated = { ...user, password: newPassword, mustChangePassword: false };
+        await this.updateUser(updated);
+    }
   },
 
   async updateRequestStatus(id: string, newStatus: RequestStatus, requests: TransportRequest[]) {

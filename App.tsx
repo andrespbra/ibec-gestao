@@ -40,6 +40,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const load = async () => {
         setIsLoading(true);
+        // Step 1: Seed demo data if empty
+        await DataManager.seedData();
+        
+        // Step 2: Fetch everything
         const data = await DataManager.fetchAllData();
         setRates(data.rates);
         setRequests(data.requests);
@@ -69,7 +73,8 @@ const App: React.FC = () => {
             status: 'PENDENTE',
             createdAt: new Date().toISOString()
         };
-        setRequests([newRequest, ...requests]);
+        const updatedRequests = [newRequest, ...requests];
+        setRequests(updatedRequests);
         DataManager.addRequest(newRequest);
         setCurrentView('DASHBOARD');
     }
@@ -81,8 +86,9 @@ const App: React.FC = () => {
       setDrivers(drivers.map(d => d.id === updated.id ? updated : d));
       DataManager.updateDriver(updated);
     } else {
-      DataManager.addDriver(data);
-      DataManager.fetchAllData().then(d => setDrivers(d.drivers));
+      DataManager.addDriver(data).then(() => {
+        DataManager.fetchAllData().then(d => setDrivers(d.drivers));
+      });
     }
     setCurrentView('DRIVERS');
     setEditingDriver(undefined);
@@ -94,8 +100,9 @@ const App: React.FC = () => {
       setClients(clients.map(c => c.id === updated.id ? updated : c));
       DataManager.updateClient(updated);
     } else {
-      DataManager.addClient(data);
-      DataManager.fetchAllData().then(d => setClients(d.clients));
+      DataManager.addClient(data).then(() => {
+        DataManager.fetchAllData().then(d => setClients(d.clients));
+      });
     }
     setCurrentView('CLIENTS');
     setEditingClient(undefined);
@@ -128,7 +135,8 @@ const App: React.FC = () => {
   };
 
   const handleStatusUpdate = (id: string, newStatus: RequestStatus) => {
-    setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    const updated = requests.map(r => r.id === id ? { ...r, status: newStatus } : r);
+    setRequests(updated);
     DataManager.updateRequestStatus(id, newStatus, requests);
   };
 
@@ -137,7 +145,7 @@ const App: React.FC = () => {
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
               <div className="flex flex-col items-center">
                   <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-gray-500 font-medium">Carregando CRM IBEC...</p>
+                  <p className="text-gray-500 font-medium">Conectando ao Banco de Dados Cloud...</p>
               </div>
           </div>
       );
@@ -165,9 +173,15 @@ const App: React.FC = () => {
 
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0 h-screen shadow-sm z-30">
         <div className="p-6 border-b border-gray-100 flex flex-col items-center">
-             <img src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" alt="CRM IBEC" className="h-14 w-auto object-contain" />
+             <div className="relative">
+                <img src="https://ibecexpress.com.br/wp-content/uploads/2022/09/cropped-fotologo.png" alt="CRM IBEC" className="h-14 w-auto object-contain" />
+                <div className={`absolute -right-2 -top-1 w-3 h-3 rounded-full border-2 border-white shadow-sm ${DataManager.isOnline ? 'bg-green-500' : 'bg-gray-400'}`} title={DataManager.isOnline ? 'Conectado ao Cloud' : 'Modo Offline (Local)'}></div>
+             </div>
              <span className="font-extrabold text-primary text-xl tracking-tight mt-2">CRM IBEC</span>
-             <div className="mt-2 text-[10px] text-secondary uppercase font-bold tracking-widest bg-orange-50 px-2 py-0.5 rounded-full">{currentUser.role}</div>
+             <div className="flex flex-col items-center gap-1 mt-2">
+                <div className="text-[10px] text-secondary uppercase font-bold tracking-widest bg-orange-50 px-2 py-0.5 rounded-full">{currentUser.role}</div>
+                <div className="text-[9px] text-gray-400 font-medium">{DataManager.isOnline ? '☁️ Cloud Sincronizado' : '💾 Armazenamento Local'}</div>
+             </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
             <button onClick={() => setCurrentView('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'DASHBOARD' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Home /> Dashboard</button>
@@ -194,7 +208,11 @@ const App: React.FC = () => {
 
       <main className="flex-1 p-4 md:p-8 pb-24 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
-            {currentView === 'DASHBOARD' && <Dashboard requests={requests} drivers={drivers} currentUser={currentUser} onNewRequest={() => setCurrentView('NEW_REQUEST')} onUpdateStatus={handleStatusUpdate} onDeleteRequest={(id) => DataManager.deleteRequest(id)} />}
+            {currentView === 'DASHBOARD' && <Dashboard requests={requests} drivers={drivers} currentUser={currentUser} onNewRequest={() => setCurrentView('NEW_REQUEST')} onUpdateStatus={handleStatusUpdate} onDeleteRequest={(id) => {
+              DataManager.deleteRequest(id).then(() => {
+                setRequests(requests.filter(r => r.id !== id));
+              });
+            }} />}
             {currentView === 'CASH_FLOW' && canAccessCashFlow && <CashFlow />}
             {currentView === 'FIXED_CONTRACTS' && canAccessFixed && <FixedContracts contracts={fixedContracts} onAddContract={handleAddFixedContract} onUpdateContract={handleUpdateFixedContract} onDeleteContract={handleDeleteFixedContract} />}
             {currentView === 'NEW_REQUEST' && <NewRequest rates={rates} drivers={drivers} clients={clients} existingRequests={requests} initialData={editingRequest} currentUser={currentUser} onSubmit={handleSaveRequest} onCancel={() => { setCurrentView('DASHBOARD'); setEditingRequest(undefined); }} />}
@@ -202,9 +220,28 @@ const App: React.FC = () => {
             {currentView === 'NEW_DRIVER' && <NewDriver rates={rates} initialData={editingDriver} onSubmit={handleSaveDriver} onCancel={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} />}
             {currentView === 'CLIENTS' && <Clients clients={clients} onNewClient={() => setCurrentView('NEW_CLIENT')} onEditClient={(c) => { setEditingClient(c); setCurrentView('NEW_CLIENT'); }} />}
             {currentView === 'NEW_CLIENT' && <NewClient initialData={editingClient} onSubmit={handleSaveClient} onCancel={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} />}
-            {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={(e: Omit<DriverExpense, 'id'>) => { DataManager.addExpense(e); }} />}
-            {currentView === 'REPORTS' && <Reports requests={requests} clients={clients} onEditRequest={(r) => { setEditingRequest(r); setCurrentView('NEW_REQUEST'); }} onDeleteRequest={(id) => DataManager.deleteRequest(id)} onPaymentUpdate={(id, d) => DataManager.updateRequest({...requests.find(r => r.id === id)!, paymentDate: d})} />}
-            {currentView === 'SETTINGS' && <Settings rates={rates} onUpdateRate={(r) => DataManager.updateRate(r)} />}
+            {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={(e: Omit<DriverExpense, 'id'>) => {
+              DataManager.addExpense(e).then(() => {
+                DataManager.fetchAllData().then(d => setExpenses(d.expenses));
+              });
+            }} />}
+            {currentView === 'REPORTS' && <Reports requests={requests} clients={clients} onEditRequest={(r) => { setEditingRequest(r); setCurrentView('NEW_REQUEST'); }} onDeleteRequest={(id) => {
+              DataManager.deleteRequest(id).then(() => {
+                setRequests(requests.filter(r => r.id !== id));
+              });
+            }} onPaymentUpdate={(id, d) => {
+              const req = requests.find(r => r.id === id);
+              if (req) {
+                const updated = { ...req, paymentDate: d };
+                setRequests(requests.map(r => r.id === id ? updated : r));
+                DataManager.updateRequest(updated);
+              }
+            }} />}
+            {currentView === 'SETTINGS' && <Settings rates={rates} onUpdateRate={(r) => {
+              DataManager.updateRate(r).then(() => {
+                setRates(rates.map(rate => rate.type === r.type ? r : rate));
+              });
+            }} />}
         </div>
       </main>
     </div>
