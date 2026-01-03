@@ -1,6 +1,5 @@
 
-
--- Enable UUID extension (optional but good practice)
+-- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
 -- 1. Table: requests
@@ -77,77 +76,40 @@ create table if not exists rates (
 create table if not exists users (
   "id" text primary key,
   "username" text unique,
-  "password" text, -- Plain text for demo, use hash in prod
-  "role" text, -- ADMIN, OPERATIONAL, CLIENT
-  "clientId" text, -- foreign key to clients if role is CLIENT
+  "password" text,
+  "role" text,
+  "clientId" text,
   "name" text,
   "mustChangePassword" boolean default false
 );
 
--- 7. SAFELY ADD NEW COLUMNS (Migration Logic)
--- IMPORTANT: This block must run BEFORE inserts to ensure columns exist
+-- 7. Table: contracts
+create table if not exists contracts (
+  "id" text primary key,
+  "clientName" text,
+  "contractValue" float,
+  "invoiceDay" int,
+  "createdAt" text,
+  "staff" jsonb -- Almacena el array de StaffExpense con los nuevos campos
+);
+
+-- 8. Migrations (Safely add columns)
 do $$
 begin
-  -- Add 'scheduledFor' to requests
-  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='scheduledFor') then
-    alter table requests add column "scheduledFor" text;
-  end if;
-
-  -- Add 'activityType' to requests
-  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='activityType') then
-    alter table requests add column "activityType" text;
-  end if;
-
-  -- Add 'contactOnSite' to requests
-  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='contactOnSite') then
-    alter table requests add column "contactOnSite" text;
-  end if;
-
-  -- Add 'observations' to requests
-  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='observations') then
-    alter table requests add column "observations" text;
-  end if;
-  
-  -- Add 'waypoints' to requests (JSONB for efficient storage of arrays)
-  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='waypoints') then
-    alter table requests add column "waypoints" jsonb;
-  end if;
-
-  -- Add 'commissionedName' to requests
-  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='commissionedName') then
-    alter table requests add column "commissionedName" text;
-  end if;
-
-  -- Add 'commissionPercentage' to requests
-  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='commissionPercentage') then
-    alter table requests add column "commissionPercentage" float;
-  end if;
-  
-  -- Add 'mustChangePassword' to users
-  if exists (select 1 from information_schema.tables where table_name='users') then
-    if not exists (select 1 from information_schema.columns where table_name='users' and column_name='mustChangePassword') then
-        alter table users add column "mustChangePassword" boolean default false;
-    end if;
-  end if;
-
-  -- Add 'plate' to drivers
-  if not exists (select 1 from information_schema.columns where table_name='drivers' and column_name='plate') then
-    alter table drivers add column "plate" text;
-  end if;
-
-  -- Add 'model' to drivers
-  if not exists (select 1 from information_schema.columns where table_name='drivers' and column_name='model') then
-    alter table drivers add column "model" text;
-  end if;
-
-  -- Add 'color' to drivers
-  if not exists (select 1 from information_schema.columns where table_name='drivers' and column_name='color') then
-    alter table drivers add column "color" text;
+  if not exists (select 1 from information_schema.tables where table_name='contracts') then
+     create table contracts (
+        "id" text primary key,
+        "clientName" text,
+        "contractValue" float,
+        "invoiceDay" int,
+        "createdAt" text,
+        "staff" jsonb
+     );
   end if;
 end
 $$;
 
--- 8. Insert Default Rates (prevent empty config)
+-- 9. Default Seeds
 insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
 values 
   ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
@@ -157,7 +119,6 @@ values
   ('PRESSKIT', 'Press Kit', 2.50, 4.50, 12.00)
 on conflict ("type") do nothing;
 
--- 9. Insert Default Users
 insert into users ("id", "username", "password", "role", "name", "mustChangePassword")
 values 
   ('1', 'admin', 'admin', 'ADMIN', 'Administrador', false),

@@ -46,6 +46,10 @@ export interface StaffExpense {
   role: string;
   department?: string; 
   salary: number;
+  vr?: number;
+  vt?: number;
+  periculosidade?: number;
+  motoAluguel?: number;
   createdAt: string;
 }
 
@@ -58,7 +62,6 @@ export interface FixedContract {
   staff: StaffExpense[]; 
 }
 
-// --- Novos Tipos para Fluxo de Caixa ---
 export type TransactionType = 'ENTRADA' | 'SAIDA';
 export type TransactionStatus = 'PREVISTO' | 'REALIZADO';
 export type FinancialCategory = 
@@ -68,7 +71,7 @@ export type FinancialCategory =
 
 export interface FinancialTransaction {
   id: string;
-  date: string; // ISO Date
+  date: string; 
   type: TransactionType;
   category: FinancialCategory;
   description: string;
