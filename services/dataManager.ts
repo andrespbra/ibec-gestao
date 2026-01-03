@@ -16,7 +16,6 @@ const STORAGE_KEYS = {
 const INITIAL_USERS: User[] = [
     { id: '1', username: 'admin', password: 'admin', role: 'ADMIN', name: 'Administrador', mustChangePassword: false },
     { id: '2', username: 'operacional', password: '123', role: 'OPERATIONAL', name: 'Operador Logístico', mustChangePassword: false },
-    { id: '3', username: 'cliente', password: '123', role: 'CLIENT', name: 'Cliente Demo', clientId: 'client_demo_id', mustChangePassword: false },
     { id: '4', username: 'edna', password: '123', role: 'ADMIN', name: 'Edna (Admin)', mustChangePassword: true }
 ];
 
@@ -31,7 +30,6 @@ async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error:
     }
   }
   const local = localStorage.getItem(storageKey);
-  // Fix: use unknown cast to satisfy T constraint
   return (local ? JSON.parse(local) : []) as unknown as T;
 }
 
@@ -54,33 +52,11 @@ export const DataManager = {
   },
 
   async seedData() {
-    const data = await this.fetchAllData();
-    if (data.requests.length > 0) return;
-
-    const demoClients: Client[] = [{
-      id: 'c1', name: 'Empresa Exemplo SA', cnpj: '12.345.678/0001-90', address: 'Av. Paulista, 1000, SP',
-      costCenter: 'LOG-SP', contactName: 'Ricardo', contactPhone: '(11) 98888-7777', contactEmail: 'contato@exemplo.com',
-      paymentDay: 10, createdAt: new Date().toISOString()
-    }];
-    const demoDrivers: Driver[] = [{
-      id: 'd1', name: 'Carlos Motorista', cpf: '123.456.789-00', address: 'Rua das Flores, 123',
-      vehicleType: 'MOTO', phone: '(11) 97777-6666', createdAt: new Date().toISOString(),
-      plate: 'ABC-1234', model: 'Honda CG', color: 'Vermelha'
-    }];
-    const demoRequests: TransportRequest[] = [{
-      id: 'r1', invoiceNumber: 'IBEC-001', clientName: 'Empresa Exemplo SA', origin: 'Av. Paulista, 1000',
-      destination: 'Rua Augusta, 500', vehicleType: 'MOTO', distanceKm: 5, driverFee: 15, clientCharge: 25,
-      status: 'CONCLUIDO', createdAt: new Date().toISOString(), driverId: 'd1'
-    }];
-
-    if (this.isOnline && supabase) {
-        await supabase.from('clients').insert(demoClients);
-        await supabase.from('drivers').insert(demoDrivers);
-        await supabase.from('requests').insert(demoRequests);
-    } else {
-        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(demoClients));
-        localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(demoDrivers));
-        localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(demoRequests));
+    // Sistema limpo: Não inserimos mais dados de demonstração (clientes, motoristas ou solicitações).
+    // Apenas garantimos que o usuário admin inicial exista caso o banco local esteja vazio.
+    const users = await this.fetchUsers();
+    if (users.length === 0) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
     }
   },
 

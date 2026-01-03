@@ -90,26 +90,23 @@ create table if not exists contracts (
   "contractValue" float,
   "invoiceDay" int,
   "createdAt" text,
-  "staff" jsonb -- Almacena el array de StaffExpense con los nuevos campos
+  "staff" jsonb
 );
 
--- 8. Migrations (Safely add columns)
-do $$
-begin
-  if not exists (select 1 from information_schema.tables where table_name='contracts') then
-     create table contracts (
-        "id" text primary key,
-        "clientName" text,
-        "contractValue" float,
-        "invoiceDay" int,
-        "createdAt" text,
-        "staff" jsonb
-     );
-  end if;
-end
-$$;
+-- 8. Table: transactions
+create table if not exists transactions (
+  "id" text primary key,
+  "date" text,
+  "type" text,
+  "category" text,
+  "description" text,
+  "value" float,
+  "status" text,
+  "paymentMethod" text,
+  "createdAt" text
+);
 
--- 9. Default Seeds
+-- 9. Default Seeds (Apenas Sistema)
 insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
 values 
   ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
