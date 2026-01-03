@@ -1,112 +1,57 @@
 
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
+-- LIMPEZA DEFINITIVA DO BANCO DE DADOS
+-- ATENÇÃO: Execute este script para apagar todos os registros e começar do zero.
 
--- 1. Table: requests
+-- 1. Limpar tabelas de movimentação
+truncate table requests cascade;
+truncate table expenses cascade;
+truncate table transactions cascade;
+truncate table contracts cascade;
+truncate table clients cascade;
+truncate table drivers cascade;
+truncate table users cascade;
+
+-- 2. Garantir que as tabelas existam (caso tenham sido deletadas)
 create table if not exists requests (
-  "id" text primary key,
-  "invoiceNumber" text,
-  "clientName" text,
-  "origin" text,
-  "destination" text,
-  "vehicleType" text,
-  "distanceKm" float,
-  "driverFee" float,
-  "clientCharge" float,
-  "status" text,
-  "createdAt" text,
-  "driverId" text,
-  "scheduledFor" text,
-  "activityType" text,
-  "contactOnSite" text,
-  "observations" text,
-  "waypoints" jsonb,
-  "commissionedName" text,
-  "commissionPercentage" float
+  "id" text primary key, "invoiceNumber" text, "clientName" text, "origin" text, "destination" text, "vehicleType" text,
+  "distanceKm" float, "driverFee" float, "clientCharge" float, "status" text, "createdAt" text, "driverId" text,
+  "scheduledFor" text, "activityType" text, "contactOnSite" text, "observations" text, "waypoints" jsonb,
+  "commissionedName" text, "commissionPercentage" float
 );
 
--- 2. Table: drivers
 create table if not exists drivers (
-  "id" text primary key,
-  "name" text,
-  "cpf" text,
-  "address" text,
-  "vehicleType" text,
-  "phone" text,
-  "createdAt" text,
-  "plate" text,
-  "model" text,
-  "color" text
+  "id" text primary key, "name" text, "cpf" text, "address" text, "vehicleType" text, "phone" text, "createdAt" text,
+  "plate" text, "model" text, "color" text
 );
 
--- 3. Table: clients
 create table if not exists clients (
-  "id" text primary key,
-  "name" text,
-  "cnpj" text,
-  "address" text,
-  "costCenter" text,
-  "contactName" text,
-  "contactPhone" text,
-  "contactEmail" text,
-  "paymentDay" int,
-  "createdAt" text
+  "id" text primary key, "name" text, "cnpj" text, "address" text, "costCenter" text, "contactName" text,
+  "contactPhone" text, "contactEmail" text, "paymentDay" int, "createdAt" text
 );
 
--- 4. Table: expenses
 create table if not exists expenses (
-  "id" text primary key,
-  "driverId" text,
-  "type" text,
-  "amount" float,
-  "date" text,
-  "description" text
+  "id" text primary key, "driverId" text, "type" text, "amount" float, "date" text, "description" text
 );
 
--- 5. Table: rates
 create table if not exists rates (
-  "type" text primary key,
-  "label" text,
-  "costPerKm" float,
-  "chargePerKm" float,
-  "baseFee" float
+  "type" text primary key, "label" text, "costPerKm" float, "chargePerKm" float, "baseFee" float
 );
 
--- 6. Table: users
 create table if not exists users (
-  "id" text primary key,
-  "username" text unique,
-  "password" text,
-  "role" text,
-  "clientId" text,
-  "name" text,
+  "id" text primary key, "username" text unique, "password" text, "role" text, "clientId" text, "name" text,
   "mustChangePassword" boolean default false
 );
 
--- 7. Table: contracts
 create table if not exists contracts (
-  "id" text primary key,
-  "clientName" text,
-  "contractValue" float,
-  "invoiceDay" int,
-  "createdAt" text,
-  "staff" jsonb
+  "id" text primary key, "clientName" text, "contractValue" float, "invoiceDay" int, "createdAt" text, "staff" jsonb
 );
 
--- 8. Table: transactions
 create table if not exists transactions (
-  "id" text primary key,
-  "date" text,
-  "type" text,
-  "category" text,
-  "description" text,
-  "value" float,
-  "status" text,
-  "paymentMethod" text,
-  "createdAt" text
+  "id" text primary key, "date" text, "type" text, "category" text, "description" text, "value" float, "status" text,
+  "paymentMethod" text, "createdAt" text
 );
 
--- 9. Default Seeds (Apenas Sistema)
+-- 3. Inserir dados de SISTEMA (Preços e Usuário Admin)
 insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
 values 
   ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
@@ -116,9 +61,8 @@ values
   ('PRESSKIT', 'Press Kit', 2.50, 4.50, 12.00)
 on conflict ("type") do nothing;
 
+-- Inserimos apenas o admin principal
 insert into users ("id", "username", "password", "role", "name", "mustChangePassword")
 values 
-  ('1', 'admin', 'admin', 'ADMIN', 'Administrador', false),
-  ('2', 'operacional', '123', 'OPERATIONAL', 'Operador Logístico', false),
-  ('4', 'edna', '123', 'ADMIN', 'Edna (Admin)', true)
+  ('1', 'admin', 'admin', 'ADMIN', 'Administrador Principal', false)
 on conflict ("id") do nothing;

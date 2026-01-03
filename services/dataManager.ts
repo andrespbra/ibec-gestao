@@ -13,10 +13,9 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'logitrack_transactions'
 };
 
+// Mantemos apenas o admin mestre para o primeiro acesso
 const INITIAL_USERS: User[] = [
-    { id: '1', username: 'admin', password: 'admin', role: 'ADMIN', name: 'Administrador', mustChangePassword: false },
-    { id: '2', username: 'operacional', password: '123', role: 'OPERATIONAL', name: 'Operador Logístico', mustChangePassword: false },
-    { id: '4', username: 'edna', password: '123', role: 'ADMIN', name: 'Edna (Admin)', mustChangePassword: true }
+    { id: '1', username: 'admin', password: 'admin', role: 'ADMIN', name: 'Administrador', mustChangePassword: false }
 ];
 
 async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error: any }>, storageKey: string): Promise<T> {
@@ -45,19 +44,15 @@ export const DataManager = {
     }
     const stored = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!stored) {
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+        // Se não houver nada, retorna apenas o admin mestre mas não força gravação recorrente
         return INITIAL_USERS;
     }
     return JSON.parse(stored);
   },
 
   async seedData() {
-    // Sistema limpo: Não inserimos mais dados de demonstração (clientes, motoristas ou solicitações).
-    // Apenas garantimos que o usuário admin inicial exista caso o banco local esteja vazio.
-    const users = await this.fetchUsers();
-    if (users.length === 0) {
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-    }
+    // Função agora é nula para evitar qualquer inserção acidental de dados antigos
+    console.log("Sistema operando em modo limpo.");
   },
 
   async authenticate(username: string, password: string): Promise<User | null> {
