@@ -50,6 +50,8 @@ export interface StaffExpense {
   vt?: number;
   periculosidade?: number;
   motoAluguel?: number;
+  fgts?: number;
+  inss?: number;
   createdAt: string;
 }
 

@@ -27,7 +27,9 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
     vr: '',
     vt: '',
     periculosidade: '',
-    motoAluguel: ''
+    motoAluguel: '',
+    fgts: '',
+    inss: ''
   });
 
   const [addingStaffToId, setAddingStaffToId] = useState<string | null>(null);
@@ -39,13 +41,25 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
     vr: '',
     vt: '',
     periculosidade: '',
-    motoAluguel: ''
+    motoAluguel: '',
+    fgts: '',
+    inss: ''
   });
+
+  const calculateTotalMemberCost = (s: any) => {
+    return (parseFloat(s.salary) || 0) + 
+           (parseFloat(s.vr) || 0) + 
+           (parseFloat(s.vt) || 0) + 
+           (parseFloat(s.periculosidade) || 0) + 
+           (parseFloat(s.motoAluguel) || 0) + 
+           (parseFloat(s.fgts) || 0) + 
+           (parseFloat(s.inss) || 0);
+  };
 
   const totalRevenue = contracts.reduce((acc, c) => acc + c.contractValue, 0);
   const totalTaxes = totalRevenue * 0.08;
   const totalStaffCost = contracts.reduce((acc, c) => 
-    acc + (c.staff?.reduce((sAcc, s) => sAcc + s.salary + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0) + (s.motoAluguel || 0), 0) || 0), 0);
+    acc + (c.staff?.reduce((sAcc, s) => sAcc + s.salary + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0) + (s.motoAluguel || 0) + (s.fgts || 0) + (s.inss || 0), 0) || 0), 0);
   const globalMargin = totalRevenue - totalTaxes - totalStaffCost;
 
   const handleContractSubmit = (e: React.FormEvent) => {
@@ -79,10 +93,12 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
       vr: parseFloat(newStaffMember.vr) || 0,
       vt: parseFloat(newStaffMember.vt) || 0,
       periculosidade: parseFloat(newStaffMember.periculosidade) || 0,
-      motoAluguel: parseFloat(newStaffMember.motoAluguel) || 0
+      motoAluguel: parseFloat(newStaffMember.motoAluguel) || 0,
+      fgts: parseFloat(newStaffMember.fgts) || 0,
+      inss: parseFloat(newStaffMember.inss) || 0
     }]);
 
-    setNewStaffMember({ employeeName: '', department: '', salary: '', vr: '', vt: '', periculosidade: '', motoAluguel: '' });
+    setNewStaffMember({ employeeName: '', department: '', salary: '', vr: '', vt: '', periculosidade: '', motoAluguel: '', fgts: '', inss: '' });
   };
 
   const handleAddStaffToExisting = (contractId: string) => {
@@ -99,6 +115,8 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
       vt: parseFloat(staffForm.vt) || 0,
       periculosidade: parseFloat(staffForm.periculosidade) || 0,
       motoAluguel: parseFloat(staffForm.motoAluguel) || 0,
+      fgts: parseFloat(staffForm.fgts) || 0,
+      inss: parseFloat(staffForm.inss) || 0,
       createdAt: new Date().toISOString()
     };
 
@@ -109,7 +127,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
 
     onUpdateContract(updatedContract);
     setAddingStaffToId(null);
-    setStaffForm({ employeeName: '', role: '', department: '', salary: '', vr: '', vt: '', periculosidade: '', motoAluguel: '' });
+    setStaffForm({ employeeName: '', role: '', department: '', salary: '', vr: '', vt: '', periculosidade: '', motoAluguel: '', fgts: '', inss: '' });
   };
 
   const removeStaff = (contractId: string, staffId: string) => {
@@ -141,7 +159,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
           <span className="text-xl font-bold text-primary block mt-1">R$ {totalRevenue.toFixed(2)}</span>
         </Card>
         <Card className="p-4 border-l-4 border-l-red-500 bg-white">
-          <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Custo de Pessoal Total (c/ Benefícios)</span>
+          <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Custo de Pessoal Total (c/ Encargos)</span>
           <span className="text-xl font-bold text-red-600 block mt-1">R$ {totalStaffCost.toFixed(2)}</span>
         </Card>
         <Card className={`p-4 border-l-4 ${globalMargin >= 0 ? 'border-l-green-500 bg-green-50' : 'border-l-red-600 bg-red-50'}`}>
@@ -170,7 +188,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
 
             <div className="bg-white p-5 rounded-xl border border-primary/10 shadow-inner">
                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                 <Icons.Users /> Detalhamento de Pessoal (Salário + Benefícios)
+                 <Icons.Users /> Detalhamento de Pessoal (Salário + Encargos)
                </h4>
                
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
@@ -179,11 +197,18 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                   <Input label="Salário Base (R$)" type="number" value={newStaffMember.salary} onChange={e => setNewStaffMember({...newStaffMember, salary: e.target.value})} className="text-sm" />
                   <Input label="VR (R$)" type="number" value={newStaffMember.vr} onChange={e => setNewStaffMember({...newStaffMember, vr: e.target.value})} className="text-sm" />
                </div>
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
                   <Input label="VT (R$)" type="number" value={newStaffMember.vt} onChange={e => setNewStaffMember({...newStaffMember, vt: e.target.value})} className="text-sm" />
                   <Input label="Periculosidade (R$)" type="number" value={newStaffMember.periculosidade} onChange={e => setNewStaffMember({...newStaffMember, periculosidade: e.target.value})} className="text-sm" />
                   <Input label="Aluguel Moto (R$)" type="number" value={newStaffMember.motoAluguel} onChange={e => setNewStaffMember({...newStaffMember, motoAluguel: e.target.value})} className="text-sm" />
-                  <Button type="button" variant="secondary" onClick={addStaffToNewContract} className="w-full text-xs">Adicionar Funcionário</Button>
+                  <div className="text-transparent">Placeholder</div>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <Input label="FGTS (R$)" type="number" value={newStaffMember.fgts} onChange={e => setNewStaffMember({...newStaffMember, fgts: e.target.value})} className="text-sm" />
+                  <Input label="INSS (R$)" type="number" value={newStaffMember.inss} onChange={e => setNewStaffMember({...newStaffMember, inss: e.target.value})} className="text-sm" />
+                  <div className="md:col-span-2">
+                    <Button type="button" variant="secondary" onClick={addStaffToNewContract} className="w-full text-xs">Adicionar Funcionário</Button>
+                  </div>
                </div>
 
                {initialStaff.length > 0 && (
@@ -194,20 +219,20 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                           <th className="px-3 py-2">Nome</th>
                           <th className="px-3 py-2">Salário</th>
                           <th className="px-3 py-2">VR/VT</th>
-                          <th className="px-3 py-2">Peric/Aluguel</th>
-                          <th className="px-3 py-2">Total</th>
+                          <th className="px-3 py-2">Encargos/Aluguel</th>
+                          <th className="px-3 py-2">Total Custo</th>
                           <th className="px-3 py-2 text-right">Ação</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {initialStaff.map((s, idx) => {
-                          const subTotal = (s.salary || 0) + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0) + (s.motoAluguel || 0);
+                          const subTotal = calculateTotalMemberCost(s);
                           return (
                             <tr key={idx} className="bg-white hover:bg-gray-50">
                               <td className="px-3 py-2 font-bold">{s.employeeName}</td>
                               <td className="px-3 py-2">R$ {s.salary.toFixed(2)}</td>
                               <td className="px-3 py-2">R$ {((s.vr || 0) + (s.vt || 0)).toFixed(2)}</td>
-                              <td className="px-3 py-2">R$ {((s.periculosidade || 0) + (s.motoAluguel || 0)).toFixed(2)}</td>
+                              <td className="px-3 py-2">R$ {((s.periculosidade || 0) + (s.motoAluguel || 0) + (s.fgts || 0) + (s.inss || 0)).toFixed(2)}</td>
                               <td className="px-3 py-2 font-black text-red-600">R$ {subTotal.toFixed(2)}</td>
                               <td className="px-3 py-2 text-right">
                                 <button type="button" onClick={() => setInitialStaff(initialStaff.filter((_, i) => i !== idx))} className="text-red-300 hover:text-red-500">
@@ -234,7 +259,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
       <div className="grid grid-cols-1 gap-6">
         {contracts.map(contract => {
           const contractTax = contract.contractValue * 0.08;
-          const contractStaffCost = contract.staff?.reduce((acc, s) => acc + s.salary + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0) + (s.motoAluguel || 0), 0) || 0;
+          const contractStaffCost = contract.staff?.reduce((acc, s) => acc + s.salary + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0) + (s.motoAluguel || 0) + (s.fgts || 0) + (s.inss || 0), 0) || 0;
           const contractNet = contract.contractValue - contractTax - contractStaffCost;
 
           return (
@@ -275,11 +300,17 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                       <Input label="Salário" type="number" value={staffForm.salary} onChange={e => setStaffForm({...staffForm, salary: e.target.value})} className="bg-white" />
                       <Input label="VR" type="number" value={staffForm.vr} onChange={e => setStaffForm({...staffForm, vr: e.target.value})} className="bg-white" />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
                       <Input label="VT" type="number" value={staffForm.vt} onChange={e => setStaffForm({...staffForm, vt: e.target.value})} className="bg-white" />
                       <Input label="Peric." type="number" value={staffForm.periculosidade} onChange={e => setStaffForm({...staffForm, periculosidade: e.target.value})} className="bg-white" />
                       <Input label="Aluguel Moto" type="number" value={staffForm.motoAluguel} onChange={e => setStaffForm({...staffForm, motoAluguel: e.target.value})} className="bg-white" />
-                      <Button onClick={() => handleAddStaffToExisting(contract.id)} variant="secondary" className="w-full">Confirmar</Button>
+                      <Input label="FGTS" type="number" value={staffForm.fgts} onChange={e => setStaffForm({...staffForm, fgts: e.target.value})} className="bg-white" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <Input label="INSS" type="number" value={staffForm.inss} onChange={e => setStaffForm({...staffForm, inss: e.target.value})} className="bg-white" />
+                      <div className="md:col-span-3">
+                        <Button onClick={() => handleAddStaffToExisting(contract.id)} variant="secondary" className="w-full">Confirmar</Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -291,20 +322,20 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                         <th className="px-3 py-2">Nome</th>
                         <th className="px-3 py-2">Salário</th>
                         <th className="px-3 py-2">VR/VT</th>
-                        <th className="px-3 py-2">Peric/Moto</th>
-                        <th className="px-3 py-2">Total Custo</th>
+                        <th className="px-3 py-2">Encargos/Moto</th>
+                        <th className="px-3 py-2">Custo Empresa</th>
                         <th className="px-3 py-2 text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {contract.staff?.map(member => {
-                        const subTotal = (member.salary || 0) + (member.vr || 0) + (member.vt || 0) + (member.periculosidade || 0) + (member.motoAluguel || 0);
+                        const subTotal = (member.salary || 0) + (member.vr || 0) + (member.vt || 0) + (member.periculosidade || 0) + (member.motoAluguel || 0) + (member.fgts || 0) + (member.inss || 0);
                         return (
                           <tr key={member.id} className="hover:bg-gray-50">
                             <td className="px-3 py-2 font-bold">{member.employeeName}</td>
                             <td className="px-3 py-2">R$ {member.salary.toFixed(2)}</td>
                             <td className="px-3 py-2">R$ {((member.vr || 0) + (member.vt || 0)).toFixed(2)}</td>
-                            <td className="px-3 py-2">R$ {((member.periculosidade || 0) + (member.motoAluguel || 0)).toFixed(2)}</td>
+                            <td className="px-3 py-2">R$ {((member.periculosidade || 0) + (member.motoAluguel || 0) + (member.fgts || 0) + (member.inss || 0)).toFixed(2)}</td>
                             <td className="px-3 py-2 font-black text-red-600">R$ {subTotal.toFixed(2)}</td>
                             <td className="px-3 py-2 text-right">
                               <button onClick={() => removeStaff(contract.id, member.id)} className="text-gray-300 hover:text-red-500"><Icons.Trash /></button>

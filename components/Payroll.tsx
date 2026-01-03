@@ -89,7 +89,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
   const staffEarnings = useMemo(() => {
     if (selectedEntity?.type === 'STAFF') {
         const s = selectedEntity.baseData as StaffExpense;
-        return (s.salary || 0) + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0) + (s.motoAluguel || 0);
+        return (s.salary || 0) + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0) + (s.motoAluguel || 0) + (s.fgts || 0) + (s.inss || 0);
     }
     return 0;
   }, [selectedEntity]);
@@ -121,6 +121,8 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
         if (s.vt) csvContent += `${new Date().toLocaleDateString('pt-BR')},VT,,${s.vt.toFixed(2)}\n`;
         if (s.periculosidade) csvContent += `${new Date().toLocaleDateString('pt-BR')},Periculosidade,,${s.periculosidade.toFixed(2)}\n`;
         if (s.motoAluguel) csvContent += `${new Date().toLocaleDateString('pt-BR')},Aluguel Moto,,${s.motoAluguel.toFixed(2)}\n`;
+        if (s.fgts) csvContent += `${new Date().toLocaleDateString('pt-BR')},FGTS,,${s.fgts.toFixed(2)}\n`;
+        if (s.inss) csvContent += `${new Date().toLocaleDateString('pt-BR')},INSS,,${s.inss.toFixed(2)}\n`;
     }
 
     filteredExpenses.forEach(e => {
@@ -178,7 +180,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                 <Card className="p-5 border-l-4 border-l-green-500">
                     <span className="text-gray-500 text-xs font-bold uppercase">Total Créditos (Vencimentos)</span>
                     <span className="text-2xl font-bold text-green-700 block mt-1">R$ {totalEarnings.toFixed(2)}</span>
-                    <span className="text-[10px] text-gray-400">{selectedEntity?.type === 'DRIVER' ? 'Soma das corridas concluídas' : 'Soma de Salário + Benefícios'}</span>
+                    <span className="text-[10px] text-gray-400">{selectedEntity?.type === 'DRIVER' ? 'Soma das corridas concluídas' : 'Salário + Benefícios + Encargos'}</span>
                 </Card>
                 <Card className="p-5 border-l-4 border-l-red-500">
                     <span className="text-gray-500 text-xs font-bold uppercase">Total Débitos (Vales/Despesas)</span>
@@ -194,7 +196,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                 <div className="space-y-4">
                     <h3 className="font-semibold text-gray-700 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        {selectedEntity?.type === 'DRIVER' ? 'Corridas Concluídas' : 'Composição do Salário'}
+                        {selectedEntity?.type === 'DRIVER' ? 'Corridas Concluídas' : 'Composição de Vencimentos'}
                     </h3>
                     <Card className="overflow-hidden">
                         <div className="max-h-[500px] overflow-y-auto">
@@ -248,6 +250,18 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                                 <tr className="bg-white border-b">
                                                     <td className="px-4 py-3">Aluguel da Moto</td>
                                                     <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).motoAluguel?.toFixed(2)}</td>
+                                                </tr>
+                                            ) : null}
+                                            {(selectedEntity?.baseData as StaffExpense).fgts ? (
+                                                <tr className="bg-white border-b">
+                                                    <td className="px-4 py-3">FGTS (Encargo)</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).fgts?.toFixed(2)}</td>
+                                                </tr>
+                                            ) : null}
+                                            {(selectedEntity?.baseData as StaffExpense).inss ? (
+                                                <tr className="bg-white border-b">
+                                                    <td className="px-4 py-3">INSS (Encargo)</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).inss?.toFixed(2)}</td>
                                                 </tr>
                                             ) : null}
                                         </>
