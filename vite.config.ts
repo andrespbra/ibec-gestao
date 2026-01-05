@@ -3,23 +3,18 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+  // Fix: Property 'cwd' does not exist on type 'Process'. Casting to any to access the Node.js process.cwd() method.
   const env = loadEnv(mode, (process as any).cwd(), '');
   
   return {
     plugins: [react()],
     define: {
-      // Inject API Key directly into process.env.API_KEY
-      // Checks API_KEY first, then VITE_API_KEY
+      // Define specific environment variables for injection.
+      // Vite will replace these exact strings in the source code with the stringified values.
       'process.env.API_KEY': JSON.stringify(env.API_KEY || env.VITE_API_KEY || ''),
-      // Also inject Supabase keys
       'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
       'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
-      
-      // Basic process polyfill to prevent "process is not defined" errors
-      'process.env': {
-        NODE_ENV: JSON.stringify(mode),
-        ...env
-      }
+      'process.env.NODE_ENV': JSON.stringify(mode),
     }
   }
 })
