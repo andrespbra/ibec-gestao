@@ -23,6 +23,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
   }), [requests, currentUser]);
 
   const isAdmin = currentUser.role === 'ADMIN';
+  const isClient = currentUser.role === 'CLIENT';
 
   // Stats Logic
   const totalDeliveries = filteredRequests.length;
@@ -169,67 +170,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
         </Card>
       </div>
 
-      {/* Row 2: Client Bar Chart & Top Driver Banner */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 bg-white shadow-sm">
-            <h3 className="font-bold text-gray-800 uppercase text-xs tracking-widest mb-6">Solicitações por Cliente</h3>
-            <div className="space-y-4">
-                {clientData.length === 0 ? (
-                    <p className="text-gray-400 text-sm text-center py-10">Sem dados de clientes.</p>
-                ) : (
-                    clientData.map(([name, count], idx) => {
-                        const total = filteredRequests.length;
-                        const percentage = (count / total) * 100;
-                        return (
-                            <div key={idx} className="space-y-1">
-                                <div className="flex justify-between text-[11px] font-bold">
-                                    <span className="text-gray-700 truncate max-w-[200px]">{name}</span>
-                                    <span className="text-primary">{count}</span>
-                                </div>
-                                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                    <div 
-                                        className="bg-primary h-full rounded-full transition-all duration-1000" 
-                                        style={{ width: `${percentage}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-        </Card>
-
-        <Card className="p-6 bg-white shadow-sm border-t-4 border-t-secondary relative overflow-hidden">
-             <div className="flex justify-between items-start mb-6">
-                <h3 className="font-bold text-gray-800 uppercase text-xs tracking-widest">Destaque Operacional</h3>
-                <span className="bg-secondary/10 text-secondary text-[9px] font-black px-2 py-1 rounded">MOTORISTA DO MÊS</span>
-             </div>
-             
-             {topDriverData ? (
-                 <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center text-3xl border-2 border-secondary/20 shadow-inner">
-                        {topDriverData.type === 'MOTO' ? '🏍️' : '🚛'}
-                    </div>
-                    <div>
-                        <h4 className="text-xl font-black text-gray-800 leading-tight">{topDriverData.name}</h4>
-                        <p className="text-sm text-gray-500 font-medium">{topDriverData.type || 'Logística'}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                            <span className="text-secondary font-black text-2xl">{topDriverData.count}</span>
-                            <span className="text-[10px] font-bold text-gray-400 uppercase">Serviços Concluídos</span>
-                        </div>
-                    </div>
-                 </div>
-             ) : (
-                 <div className="text-center py-6 text-gray-400 italic text-sm">Aguardando conclusões...</div>
-             )}
-             
-             <div className="mt-6 pt-4 border-t border-gray-50 flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Ranking atualizado em tempo real</span>
-             </div>
-        </Card>
-      </div>
-
       {/* Recent List */}
       <Card className="overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -278,26 +218,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <StatusBadge status={request.status} />
+                                    {!isClient ? (
+                                      <select 
+                                        value={request.status} 
+                                        onChange={(e) => onUpdateStatus(request.id, e.target.value as RequestStatus)}
+                                        className={`text-xs font-semibold border rounded-full px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer transition-colors ${
+                                          request.status === 'PENDENTE' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                          request.status === 'EM_ANDAMENTO' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                          'bg-green-100 text-green-800 border-green-200'
+                                        }`}
+                                      >
+                                        <option value="PENDENTE">Pendente</option>
+                                        <option value="EM_ANDAMENTO">Em andamento</option>
+                                        <option value="CONCLUIDO">Finalizado</option>
+                                      </select>
+                                    ) : (
+                                      <StatusBadge status={request.status} />
+                                    )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {!isAdmin && request.status === 'PENDENTE' && (
-                                            <button 
-                                                onClick={() => onUpdateStatus(request.id, 'EM_ANDAMENTO')}
-                                                className="bg-primary/5 text-primary px-3 py-1 rounded text-[10px] font-black uppercase hover:bg-primary hover:text-white transition-all"
-                                            >
-                                                Iniciar
-                                            </button>
-                                        )}
-                                        {request.status === 'EM_ANDAMENTO' && (
-                                            <button 
-                                                onClick={() => onUpdateStatus(request.id, 'CONCLUIDO')}
-                                                className="bg-secondary/5 text-secondary px-3 py-1 rounded text-[10px] font-black uppercase hover:bg-secondary hover:text-white transition-all"
-                                            >
-                                                Concluir
-                                            </button>
-                                        )}
                                         <button 
                                             onClick={() => handleDelete(request.id, request.invoiceNumber)}
                                             className="text-gray-300 hover:text-red-500 p-1 transition-colors"

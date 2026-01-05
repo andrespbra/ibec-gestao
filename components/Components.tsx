@@ -45,8 +45,8 @@ export const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => 
 
   const labels = {
     PENDENTE: "Pendente",
-    EM_ANDAMENTO: "Em Trânsito",
-    CONCLUIDO: "Concluído",
+    EM_ANDAMENTO: "Em andamento",
+    CONCLUIDO: "Finalizado",
   };
 
   return (
