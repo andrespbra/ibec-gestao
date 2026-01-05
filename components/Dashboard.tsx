@@ -22,7 +22,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
       return true;
   }), [requests, currentUser]);
 
-  const isAdmin = currentUser.role === 'ADMIN';
   const isClient = currentUser.role === 'CLIENT';
 
   // Stats Logic
@@ -54,29 +53,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
     }
     return result;
   }, [filteredRequests]);
-
-  // Group by Client (Top 5)
-  const clientData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredRequests.forEach(r => {
-        counts[r.clientName] = (counts[r.clientName] || 0) + 1;
-    });
-    return Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-  }, [filteredRequests]);
-
-  // Top Driver Logic
-  const topDriverData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredRequests.filter(r => r.status === 'CONCLUIDO' && r.driverId).forEach(r => {
-        counts[r.driverId!] = (counts[r.driverId!] || 0) + 1;
-    });
-    const topEntry = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-    if (!topEntry) return null;
-    const driver = drivers.find(d => d.id === topEntry[0]);
-    return { name: driver?.name || 'Desconhecido', count: topEntry[1], type: driver?.vehicleType };
-  }, [filteredRequests, drivers]);
 
   const getDriverName = (driverId?: string) => {
     if (!driverId) return 'Aguardando...';
