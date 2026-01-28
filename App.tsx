@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { INITIAL_RATES, TransportRequest, VehicleRate, RequestStatus, Driver, Client, DriverExpense, User, FixedContract } from './types';
 import { Dashboard } from './components/Dashboard';
 import { NewRequest } from './components/NewRequest';
@@ -36,35 +36,35 @@ const App: React.FC = () => {
   const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
   const [editingRequest, setEditingRequest] = useState<TransportRequest | undefined>(undefined);
 
+  // Centralized Data Loader
+  const refreshAllData = useCallback(async () => {
+    const data = await DataManager.fetchAllData();
+    setRates(data.rates);
+    setRequests(data.requests);
+    setDrivers(data.drivers);
+    setClients(data.clients);
+    setExpenses(data.expenses);
+    
+    const fixedData = await DataManager.fetchFixedData();
+    setFixedContracts(fixedData.contracts);
+  }, []);
+
   // Load Data on Mount
   useEffect(() => {
     const load = async () => {
         setIsLoading(true);
-        // Step 1: Seed demo data if empty
         await DataManager.seedData();
-        
-        // Step 2: Fetch everything
-        const data = await DataManager.fetchAllData();
-        setRates(data.rates);
-        setRequests(data.requests);
-        setDrivers(data.drivers);
-        setClients(data.clients);
-        setExpenses(data.expenses);
-        
-        const fixedData = await DataManager.fetchFixedData();
-        setFixedContracts(fixedData.contracts);
-        
+        await refreshAllData();
         setIsLoading(false);
     };
     load();
-  }, []);
+  }, [refreshAllData]);
 
-  const handleSaveRequest = (data: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => {
+  const handleSaveRequest = async (data: Omit<TransportRequest, 'id' | 'createdAt' | 'status'>) => {
+    setIsLoading(true);
     if (editingRequest) {
         const updatedRequest: TransportRequest = { ...editingRequest, ...data };
-        setRequests(requests.map(r => r.id === updatedRequest.id ? updatedRequest : r));
-        DataManager.updateRequest(updatedRequest);
-        setCurrentView('DASHBOARD');
+        await DataManager.updateRequest(updatedRequest);
         setEditingRequest(undefined);
     } else {
         const newRequest: TransportRequest = {
@@ -73,71 +73,71 @@ const App: React.FC = () => {
             status: 'PENDENTE',
             createdAt: new Date().toISOString()
         };
-        const updatedRequests = [newRequest, ...requests];
-        setRequests(updatedRequests);
-        DataManager.addRequest(newRequest);
-        setCurrentView('DASHBOARD');
+        await DataManager.addRequest(newRequest);
     }
+    await refreshAllData();
+    setCurrentView('DASHBOARD');
+    setIsLoading(false);
   };
 
-  const handleSaveDriver = (data: Omit<Driver, 'id' | 'createdAt'>) => {
+  const handleSaveDriver = async (data: Omit<Driver, 'id' | 'createdAt'>) => {
+    setIsLoading(true);
     if (editingDriver) {
-      const updated = { ...editingDriver, ...data };
-      setDrivers(drivers.map(d => d.id === updated.id ? updated : d));
-      DataManager.updateDriver(updated);
+      await DataManager.updateDriver({ ...editingDriver, ...data });
+      setEditingDriver(undefined);
     } else {
-      DataManager.addDriver(data).then(() => {
-        DataManager.fetchAllData().then(d => setDrivers(d.drivers));
-      });
+      await DataManager.addDriver(data);
     }
+    await refreshAllData();
     setCurrentView('DRIVERS');
-    setEditingDriver(undefined);
+    setIsLoading(false);
   };
 
-  const handleSaveClient = (data: Omit<Client, 'id' | 'createdAt'>) => {
+  const handleSaveClient = async (data: Omit<Client, 'id' | 'createdAt'>) => {
+    setIsLoading(true);
     if (editingClient) {
-      const updated = { ...editingClient, ...data };
-      setClients(clients.map(c => c.id === updated.id ? updated : c));
-      DataManager.updateClient(updated);
+      await DataManager.updateClient({ ...editingClient, ...data });
+      setEditingClient(undefined);
     } else {
-      DataManager.addClient(data).then(() => {
-        DataManager.fetchAllData().then(d => setClients(d.clients));
-      });
+      await DataManager.addClient(data);
     }
+    await refreshAllData();
     setCurrentView('CLIENTS');
-    setEditingClient(undefined);
+    setIsLoading(false);
   };
 
-  const handleAddFixedContract = (data: Omit<FixedContract, 'id' | 'createdAt'>) => {
+  const handleAddFixedContract = async (data: Omit<FixedContract, 'id' | 'createdAt'>) => {
+    setIsLoading(true);
     const newContract: FixedContract = {
       ...data,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       staff: data.staff || []
     };
-    const updated = [newContract, ...fixedContracts];
-    setFixedContracts(updated);
-    DataManager.addFixedContract(newContract);
+    await DataManager.addFixedContract(newContract);
+    await refreshAllData();
+    setIsLoading(false);
   };
 
-  const handleUpdateFixedContract = (updatedContract: FixedContract) => {
-    const updatedList = fixedContracts.map(c => c.id === updatedContract.id ? updatedContract : c);
-    setFixedContracts(updatedList);
-    DataManager.updateFixedContract(updatedContract);
+  const handleUpdateFixedContract = async (updatedContract: FixedContract) => {
+    setIsLoading(true);
+    await DataManager.updateFixedContract(updatedContract);
+    await refreshAllData();
+    setIsLoading(false);
   };
 
-  const handleDeleteFixedContract = (id: string) => {
+  const handleDeleteFixedContract = async (id: string) => {
     if (window.confirm('Excluir este contrato permanentemente?')) {
-      const updatedList = fixedContracts.filter(c => c.id !== id);
-      setFixedContracts(updatedList);
-      DataManager.deleteFixedContract(id);
+      setIsLoading(true);
+      await DataManager.deleteFixedContract(id);
+      await refreshAllData();
+      setIsLoading(false);
     }
   };
 
-  const handleStatusUpdate = (id: string, newStatus: RequestStatus) => {
-    const updated = requests.map(r => r.id === id ? { ...r, status: newStatus } : r);
-    setRequests(updated);
-    DataManager.updateRequestStatus(id, newStatus, requests);
+  const handleStatusUpdate = async (id: string, newStatus: RequestStatus) => {
+    await DataManager.updateRequestStatus(id, newStatus, requests);
+    await refreshAllData();
   };
 
   if (isLoading) {
@@ -145,7 +145,7 @@ const App: React.FC = () => {
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
               <div className="flex flex-col items-center">
                   <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-gray-500 font-medium">Conectando ao Banco de Dados Cloud...</p>
+                  <p className="text-gray-500 font-medium">Processando informações...</p>
               </div>
           </div>
       );
@@ -208,10 +208,11 @@ const App: React.FC = () => {
 
       <main className="flex-1 p-4 md:p-8 pb-24 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
-            {currentView === 'DASHBOARD' && <Dashboard requests={requests} drivers={drivers} currentUser={currentUser} onNewRequest={() => setCurrentView('NEW_REQUEST')} onUpdateStatus={handleStatusUpdate} onDeleteRequest={(id) => {
-              DataManager.deleteRequest(id).then(() => {
-                setRequests(requests.filter(r => r.id !== id));
-              });
+            {currentView === 'DASHBOARD' && <Dashboard requests={requests} drivers={drivers} currentUser={currentUser} onNewRequest={() => setCurrentView('NEW_REQUEST')} onUpdateStatus={handleStatusUpdate} onDeleteRequest={async (id) => {
+              setIsLoading(true);
+              await DataManager.deleteRequest(id);
+              await refreshAllData();
+              setIsLoading(false);
             }} />}
             {currentView === 'CASH_FLOW' && canAccessCashFlow && <CashFlow />}
             {currentView === 'FIXED_CONTRACTS' && canAccessFixed && <FixedContracts contracts={fixedContracts} onAddContract={handleAddFixedContract} onUpdateContract={handleUpdateFixedContract} onDeleteContract={handleDeleteFixedContract} />}
@@ -220,27 +221,25 @@ const App: React.FC = () => {
             {currentView === 'NEW_DRIVER' && <NewDriver rates={rates} initialData={editingDriver} onSubmit={handleSaveDriver} onCancel={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} />}
             {currentView === 'CLIENTS' && <Clients clients={clients} onNewClient={() => setCurrentView('NEW_CLIENT')} onEditClient={(c) => { setEditingClient(c); setCurrentView('NEW_CLIENT'); }} />}
             {currentView === 'NEW_CLIENT' && <NewClient initialData={editingClient} onSubmit={handleSaveClient} onCancel={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} />}
-            {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={(e: Omit<DriverExpense, 'id'>) => {
-              DataManager.addExpense(e).then(() => {
-                DataManager.fetchAllData().then(d => setExpenses(d.expenses));
-              });
+            {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={async (e: Omit<DriverExpense, 'id'>) => {
+              await DataManager.addExpense(e);
+              await refreshAllData();
             }} />}
-            {currentView === 'REPORTS' && <Reports requests={requests} clients={clients} onEditRequest={(r) => { setEditingRequest(r); setCurrentView('NEW_REQUEST'); }} onDeleteRequest={(id) => {
-              DataManager.deleteRequest(id).then(() => {
-                setRequests(requests.filter(r => r.id !== id));
-              });
-            }} onPaymentUpdate={(id, d) => {
+            {currentView === 'REPORTS' && <Reports requests={requests} clients={clients} onEditRequest={(r) => { setEditingRequest(r); setCurrentView('NEW_REQUEST'); }} onDeleteRequest={async (id) => {
+              setIsLoading(true);
+              await DataManager.deleteRequest(id);
+              await refreshAllData();
+              setIsLoading(false);
+            }} onPaymentUpdate={async (id, d) => {
               const req = requests.find(r => r.id === id);
               if (req) {
-                const updated = { ...req, paymentDate: d };
-                setRequests(requests.map(r => r.id === id ? updated : r));
-                DataManager.updateRequest(updated);
+                await DataManager.updateRequest({ ...req, paymentDate: d });
+                await refreshAllData();
               }
             }} />}
-            {currentView === 'SETTINGS' && <Settings rates={rates} onUpdateRate={(r) => {
-              DataManager.updateRate(r).then(() => {
-                setRates(rates.map(rate => rate.type === r.type ? r : rate));
-              });
+            {currentView === 'SETTINGS' && <Settings rates={rates} onUpdateRate={async (r) => {
+              await DataManager.updateRate(r);
+              await refreshAllData();
             }} />}
         </div>
       </main>

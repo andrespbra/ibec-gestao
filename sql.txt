@@ -1,23 +1,45 @@
 
--- LIMPEZA DEFINITIVA DO BANCO DE DADOS
--- ATENÇÃO: Execute este script para apagar todos os registros e começar do zero.
+-- LIMPEZA DEFINITIVA E ATUALIZAÇÃO DO BANCO DE DADOS
+-- ATENÇÃO: Execute este script no editor SQL do Supabase para garantir que todas as colunas existam.
 
--- 1. Limpar tabelas de movimentação
-truncate table requests cascade;
-truncate table expenses cascade;
-truncate table transactions cascade;
-truncate table contracts cascade;
-truncate table clients cascade;
-truncate table drivers cascade;
-truncate table users cascade;
-
--- 2. Garantir que as tabelas existam (caso tenham sido deletadas)
+-- 1. Garantir que as tabelas existam com TODAS as colunas necessárias
 create table if not exists requests (
-  "id" text primary key, "invoiceNumber" text, "clientName" text, "origin" text, "destination" text, "vehicleType" text,
-  "distanceKm" float, "driverFee" float, "clientCharge" float, "status" text, "createdAt" text, "driverId" text,
-  "scheduledFor" text, "activityType" text, "contactOnSite" text, "observations" text, "waypoints" jsonb,
-  "commissionedName" text, "commissionPercentage" float
+  "id" text primary key, 
+  "invoiceNumber" text, 
+  "clientName" text, 
+  "origin" text, 
+  "destination" text, 
+  "vehicleType" text,
+  "distanceKm" float, 
+  "driverFee" float, 
+  "clientCharge" float, 
+  "status" text, 
+  "createdAt" text, 
+  "driverId" text,
+  "scheduledFor" text, 
+  "activityType" text, 
+  "contactOnSite" text, 
+  "observations" text, 
+  "waypoints" jsonb,
+  "commissionedName" text, 
+  "commissionPercentage" float,
+  "paymentDate" text
 );
+
+-- Script de migração para adicionar colunas se a tabela já existir
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='paymentDate') then
+    alter table requests add column "paymentDate" text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='commissionedName') then
+    alter table requests add column "commissionedName" text;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='commissionPercentage') then
+    alter table requests add column "commissionPercentage" float;
+  end if;
+end
+$$;
 
 create table if not exists drivers (
   "id" text primary key, "name" text, "cpf" text, "address" text, "vehicleType" text, "phone" text, "createdAt" text,
@@ -51,7 +73,7 @@ create table if not exists transactions (
   "paymentMethod" text, "createdAt" text
 );
 
--- 3. Inserir dados de SISTEMA (Preços e Usuário Admin)
+-- 2. Inserir dados de SISTEMA (Preços e Usuário Admin)
 insert into rates ("type", "label", "costPerKm", "chargePerKm", "baseFee")
 values 
   ('MOTO', 'Motoboy', 1.50, 2.50, 5.00),
@@ -61,7 +83,6 @@ values
   ('PRESSKIT', 'Press Kit', 2.50, 4.50, 12.00)
 on conflict ("type") do nothing;
 
--- Inserimos apenas o admin principal
 insert into users ("id", "username", "password", "role", "name", "mustChangePassword")
 values 
   ('1', 'admin', 'admin', 'ADMIN', 'Administrador Principal', false)

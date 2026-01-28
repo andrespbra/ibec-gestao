@@ -13,7 +13,6 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'logitrack_transactions'
 };
 
-// Mantemos apenas o admin mestre para o primeiro acesso
 const INITIAL_USERS: User[] = [
     { id: '1', username: 'admin', password: 'admin', role: 'ADMIN', name: 'Administrador', mustChangePassword: false }
 ];
@@ -22,10 +21,13 @@ async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error:
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabaseCall;
-      if (error) throw error;
+      if (error) {
+        console.error(`Erro no Supabase (${storageKey}):`, error);
+        throw error;
+      }
       return data as T;
     } catch (err) {
-      console.warn(`Supabase error for ${storageKey}, falling back to local:`, err);
+      console.warn(`Falha na nuvem para ${storageKey}, buscando local:`, err);
     }
   }
   const local = localStorage.getItem(storageKey);
@@ -35,24 +37,16 @@ async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error:
 export const DataManager = {
   isOnline: isSupabaseConfigured,
 
-  execute: executeInternal,
-
   async fetchUsers(): Promise<User[]> {
-    if (this.isOnline && supabase) {
-      const { data } = await supabase.from('users').select('*');
-      if (data && data.length > 0) return data as User[];
-    }
-    const stored = localStorage.getItem(STORAGE_KEYS.USERS);
-    if (!stored) {
-        // Se não houver nada, retorna apenas o admin mestre mas não força gravação recorrente
-        return INITIAL_USERS;
-    }
-    return JSON.parse(stored);
+    const data = await executeInternal<User[]>(
+      (supabase ? supabase.from('users').select('*') : Promise.resolve({data: null, error: null})) as any,
+      STORAGE_KEYS.USERS
+    );
+    return (data && data.length > 0) ? data : INITIAL_USERS;
   },
 
   async seedData() {
-    // Função agora é nula para evitar qualquer inserção acidental de dados antigos
-    console.log("Sistema operando em modo limpo.");
+    console.log("Sistema em modo de produção.");
   },
 
   async authenticate(username: string, password: string): Promise<User | null> {
@@ -108,16 +102,26 @@ export const DataManager = {
   },
 
   async add(table: string, storageKey: string, item: any) {
-    if (this.isOnline && supabase) {
-        await supabase.from(table).insert([item]);
+    try {
+      if (this.isOnline && supabase) {
+        const { error } = await supabase.from(table).insert([item]);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error(`Erro ao salvar na nuvem (${table}):`, err);
     }
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     localStorage.setItem(storageKey, JSON.stringify([item, ...current]));
   },
 
   async update(table: string, storageKey: string, item: any, idField: string = 'id') {
-    if (this.isOnline && supabase) {
-        await supabase.from(table).update(item).eq(idField, item[idField]);
+    try {
+      if (this.isOnline && supabase) {
+        const { error } = await supabase.from(table).update(item).eq(idField, item[idField]);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error(`Erro ao atualizar na nuvem (${table}):`, err);
     }
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const updated = current.map((i: any) => i[idField] === item[idField] ? item : i);
@@ -125,8 +129,13 @@ export const DataManager = {
   },
 
   async delete(table: string, storageKey: string, id: string, idField: string = 'id') {
-    if (this.isOnline && supabase) {
-        await supabase.from(table).delete().eq(idField, id);
+    try {
+      if (this.isOnline && supabase) {
+        const { error } = await supabase.from(table).delete().eq(idField, id);
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error(`Erro ao deletar na nuvem (${table}):`, err);
     }
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     localStorage.setItem(storageKey, JSON.stringify(current.filter((i: any) => i[idField] !== id)));
