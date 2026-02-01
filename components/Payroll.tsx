@@ -23,6 +23,7 @@ type PayrollEntity = {
 export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, onAddExpense, onUpdateExpense }) => {
   const [selectedEntityId, setSelectedEntityId] = useState<string>('');
   const [contracts, setContracts] = useState<FixedContract[]>([]);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   
   // Filtros de Competência
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
@@ -60,20 +61,60 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
 
   const selectedEntity = useMemo(() => entities.find(e => e.id === selectedEntityId), [entities, selectedEntityId]);
 
-  const handleAddExpense = (e: React.FormEvent) => {
+  const handleEditExpense = (expense: DriverExpense) => {
+    setEditingExpenseId(expense.id);
+    setNewExpense({
+        type: expense.type,
+        amount: expense.amount.toString(),
+        description: expense.description || '',
+        date: expense.date
+    });
+    // Scroll suave para o formulário
+    window.scrollTo({ top: 100, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingExpenseId(null);
+    setNewExpense({
+        type: 'VALE',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleAddExpenseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEntityId) return;
 
-    onAddExpense({
-        driverId: selectedEntityId,
-        type: newExpense.type,
-        amount: parseFloat(newExpense.amount) || 0,
-        date: newExpense.date,
-        description: newExpense.description,
-        status: 'PENDENTE'
-    });
+    if (editingExpenseId && onUpdateExpense) {
+        onUpdateExpense({
+            id: editingExpenseId,
+            driverId: selectedEntityId,
+            type: newExpense.type,
+            amount: parseFloat(newExpense.amount) || 0,
+            date: newExpense.date,
+            description: newExpense.description,
+            status: expenses.find(exp => exp.id === editingExpenseId)?.status || 'PENDENTE'
+        });
+        setEditingExpenseId(null);
+    } else {
+        onAddExpense({
+            driverId: selectedEntityId,
+            type: newExpense.type,
+            amount: parseFloat(newExpense.amount) || 0,
+            date: newExpense.date,
+            description: newExpense.description,
+            status: 'PENDENTE'
+        });
+    }
 
-    setNewExpense(prev => ({ ...prev, amount: '', description: '' }));
+    setNewExpense({
+        type: 'VALE',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0]
+    });
   };
 
   const handlePayExpense = (expense: DriverExpense) => {
@@ -122,7 +163,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
   const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       {/* Header com Filtros */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div className="space-y-1">
@@ -241,11 +282,11 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                 <div className="lg:col-span-5 space-y-4">
                     <h3 className="text-xs font-black text-gray-700 uppercase tracking-widest px-1 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                        Lançar Débito / Despesa
+                        {editingExpenseId ? 'Editar Lançamento' : 'Lançar Débito / Despesa'}
                     </h3>
                     
-                    <Card className="p-6 bg-gray-50 border-red-100 border-t-4">
-                        <form onSubmit={handleAddExpense} className="space-y-4">
+                    <Card className={`p-6 bg-gray-50 border-t-4 ${editingExpenseId ? 'border-secondary' : 'border-red-100'}`}>
+                        <form onSubmit={handleAddExpenseSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <Select 
                                     label="Categoria" 
@@ -284,9 +325,16 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                 placeholder="Ex: Referente a coleta em Jundiaí"
                                 className="h-11 border-gray-200"
                             />
-                            <Button type="submit" variant="danger" className="w-full py-3 shadow-lg shadow-red-200">
-                                <Icons.Plus /> Confirmar Lançamento
-                            </Button>
+                            <div className="flex gap-2">
+                                {editingExpenseId && (
+                                    <Button type="button" variant="outline" onClick={handleCancelEdit} className="flex-1">
+                                        Cancelar
+                                    </Button>
+                                )}
+                                <Button type="submit" variant={editingExpenseId ? 'secondary' : 'danger'} className="flex-[2] py-3 shadow-lg">
+                                    {editingExpenseId ? <><Icons.Edit /> Atualizar Lançamento</> : <><Icons.Plus /> Confirmar Lançamento</>}
+                                </Button>
+                            </div>
                         </form>
                     </Card>
 
@@ -298,7 +346,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                     <tr>
                                         <th className="px-4 py-3">Tipo / Data</th>
                                         <th className="px-4 py-3 text-right">Valor</th>
-                                        <th className="px-4 py-3 text-right">Status</th>
+                                        <th className="px-4 py-3 text-right">Ação</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
@@ -306,7 +354,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                         <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400 text-xs italic">Nenhum débito neste período.</td></tr>
                                     ) : (
                                         filteredExpenses.map(exp => (
-                                            <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
+                                            <tr key={exp.id} className="hover:bg-gray-50 transition-colors group">
                                                 <td className="px-4 py-3">
                                                     <div className="text-[10px] font-black text-gray-800">{exp.type}</div>
                                                     <div className="text-[9px] text-gray-400 font-bold">{new Date(exp.date).toLocaleDateString('pt-BR')}</div>
@@ -315,16 +363,26 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                                     <span className="text-red-600 font-black text-[11px]">- {exp.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    {exp.status === 'PAGO' ? (
-                                                        <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Pago</span>
-                                                    ) : (
+                                                    <div className="flex justify-end items-center gap-1">
                                                         <button 
-                                                            onClick={() => handlePayExpense(exp)}
-                                                            className="text-[8px] font-black uppercase text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 hover:bg-orange-500 hover:text-white transition-all"
+                                                            onClick={() => handleEditExpense(exp)}
+                                                            className="text-gray-300 hover:text-secondary p-1 transition-all"
+                                                            title="Editar Lançamento"
                                                         >
-                                                            Liquidado?
+                                                            <Icons.Edit />
                                                         </button>
-                                                    )}
+                                                        {exp.status === 'PAGO' ? (
+                                                            <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Pago</span>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => handlePayExpense(exp)}
+                                                                className="text-[8px] font-black uppercase text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 hover:bg-orange-500 hover:text-white transition-all"
+                                                                title="Marcar como Liquidado"
+                                                            >
+                                                                Liquidado?
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))

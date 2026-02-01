@@ -224,7 +224,7 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
                           <th className="px-6 py-4">INSS/Taxas</th>
                           <th className="px-6 py-4">Líquido</th>
                           <th className="px-6 py-4">Status</th>
-                          <th className="px-6 py-4 text-right">Ação</th>
+                          <th className="px-6 py-4 text-right">Gerir</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -235,7 +235,7 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
                              const inss = staff.salary * 0.11;
                              const net = staff.salary + (staff.bonus || 0) - inss;
                              return (
-                                <tr key={staff.id} className="hover:bg-gray-50/80 transition-colors">
+                                <tr key={staff.id} className="hover:bg-gray-50/80 transition-colors group">
                                    <td className="px-6 py-4 font-bold text-gray-900">{staff.employeeName}</td>
                                    <td className="px-6 py-4 font-medium">R$ {staff.salary.toLocaleString('pt-BR')}</td>
                                    <td className="px-6 py-4 text-emerald-600 font-bold">+ R$ {(staff.bonus || 0).toLocaleString('pt-BR')}</td>
@@ -247,7 +247,18 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
                                       </span>
                                    </td>
                                    <td className="px-6 py-4 text-right">
-                                      <button className="bg-emerald-600 text-white px-3 py-1 rounded text-[10px] font-bold hover:bg-emerald-700 shadow-sm">PAGAR</button>
+                                      <div className="flex justify-end gap-1 items-center">
+                                          <button 
+                                            className="text-gray-300 hover:text-secondary p-1 transition-all"
+                                            title="Conferir e Editar Dados"
+                                            onClick={() => alert('Para editar este colaborador, acesse a aba "Contratos Fixos" e selecione "Alterar" no contrato correspondente.')}
+                                          >
+                                              <Icons.Edit />
+                                          </button>
+                                          <button className="bg-emerald-600 text-white px-3 py-1 rounded text-[10px] font-bold hover:bg-emerald-700 shadow-sm transition-all active:scale-95">
+                                              PAGAR
+                                          </button>
+                                      </div>
                                    </td>
                                 </tr>
                              );
