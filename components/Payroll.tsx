@@ -9,6 +9,7 @@ interface PayrollProps {
   requests: TransportRequest[];
   expenses: DriverExpense[];
   onAddExpense: (expense: Omit<DriverExpense, 'id'>) => void;
+  onUpdateExpense?: (expense: DriverExpense) => void;
 }
 
 type PayrollEntity = {
@@ -19,7 +20,7 @@ type PayrollEntity = {
     baseData: Driver | StaffExpense;
 };
 
-export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, onAddExpense }) => {
+export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, onAddExpense, onUpdateExpense }) => {
   const [selectedEntityId, setSelectedEntityId] = useState<string>('');
   const [contracts, setContracts] = useState<FixedContract[]>([]);
   
@@ -30,7 +31,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     description: string;
     date: string;
   }>({
-    type: 'GASOLINA',
+    type: 'VALE',
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0]
@@ -40,22 +41,16 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     DataManager.fetchFixedData().then(data => setContracts(data.contracts));
   }, []);
 
-  // Aggregate Drivers and Contract Staff into a single selectable list
   const entities = useMemo(() => {
     const list: PayrollEntity[] = [];
-    
-    // Drivers
     drivers.forEach(d => {
         list.push({ id: d.id, name: d.name, type: 'DRIVER', details: `Veículo: ${d.vehicleType}`, baseData: d });
     });
-
-    // Staff from Contracts
     contracts.forEach(c => {
         c.staff?.forEach(s => {
             list.push({ id: s.id, name: s.employeeName, type: 'STAFF', details: `Contrato: ${c.clientName}`, baseData: s });
         });
     });
-
     return list;
   }, [drivers, contracts]);
 
@@ -66,17 +61,27 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     if (!selectedEntityId) return;
 
     onAddExpense({
-        driverId: selectedEntityId, // Using entity ID as driverId for simplification in expense tracking
+        driverId: selectedEntityId,
         type: newExpense.type,
         amount: parseFloat(newExpense.amount) || 0,
         date: newExpense.date,
-        description: newExpense.description
+        description: newExpense.description,
+        status: 'PENDENTE'
     });
 
     setNewExpense(prev => ({ ...prev, amount: '', description: '' }));
   };
 
-  // Calculations for Drivers
+  const handlePayExpense = (expense: DriverExpense) => {
+    if (onUpdateExpense) {
+        onUpdateExpense({
+            ...expense,
+            status: 'PAGO',
+            paidAt: new Date().toISOString()
+        });
+    }
+  };
+
   const filteredRequests = useMemo(() => {
     return requests.filter(r => r.driverId === selectedEntityId && r.status === 'CONCLUIDO');
   }, [requests, selectedEntityId]);
@@ -85,7 +90,6 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     return expenses.filter(e => e.driverId === selectedEntityId);
   }, [expenses, selectedEntityId]);
 
-  // Calculations for Staff
   const staffEarnings = useMemo(() => {
     if (selectedEntity?.type === 'STAFF') {
         const s = selectedEntity.baseData as StaffExpense;
@@ -103,37 +107,20 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
 
   const handleExport = () => {
     if (!selectedEntity) return;
-
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += `Extrato Detalhado: ${selectedEntity.name}\n`;
-    csvContent += `Tipo: ${selectedEntity.type === 'DRIVER' ? 'Motorista/Parceiro' : 'Funcionário Contrato Fixo'}\n`;
-    csvContent += `Gerado em: ${new Date().toLocaleString()}\n\n`;
-    csvContent += "Data,Tipo,Detalhes,Valor (R$)\n";
-
+    csvContent += `Extrato Detalhado: ${selectedEntity.name}\nTipo: ${selectedEntity.type === 'DRIVER' ? 'Motorista/Parceiro' : 'Funcionário'}\nGerado em: ${new Date().toLocaleString()}\n\n`;
+    csvContent += "Data,Tipo,Detalhes,Valor (R$),Status\n";
     if (selectedEntity.type === 'DRIVER') {
-        filteredRequests.forEach(r => {
-            csvContent += `${new Date(r.createdAt).toLocaleDateString('pt-BR')},Crédito,Nota: ${r.invoiceNumber},${r.driverFee.toFixed(2)}\n`;
-        });
+        filteredRequests.forEach(r => { csvContent += `${new Date(r.createdAt).toLocaleDateString('pt-BR')},Crédito,Nota: ${r.invoiceNumber},${r.driverFee.toFixed(2)},COMPENSADO\n`; });
     } else {
         const s = selectedEntity.baseData as StaffExpense;
-        csvContent += `${new Date().toLocaleDateString('pt-BR')},Salário Base,,${s.salary.toFixed(2)}\n`;
-        if (s.vr) csvContent += `${new Date().toLocaleDateString('pt-BR')},VR,,${s.vr.toFixed(2)}\n`;
-        if (s.vt) csvContent += `${new Date().toLocaleDateString('pt-BR')},VT,,${s.vt.toFixed(2)}\n`;
-        if (s.periculosidade) csvContent += `${new Date().toLocaleDateString('pt-BR')},Periculosidade,,${s.periculosidade.toFixed(2)}\n`;
-        if (s.motoAluguel) csvContent += `${new Date().toLocaleDateString('pt-BR')},Aluguel Moto,,${s.motoAluguel.toFixed(2)}\n`;
-        if (s.fgts) csvContent += `${new Date().toLocaleDateString('pt-BR')},FGTS,,${s.fgts.toFixed(2)}\n`;
-        if (s.inss) csvContent += `${new Date().toLocaleDateString('pt-BR')},INSS,,${s.inss.toFixed(2)}\n`;
+        csvContent += `${new Date().toLocaleDateString('pt-BR')},Salário Base,,${s.salary.toFixed(2)},A PAGAR\n`;
+        if (s.vr) csvContent += `${new Date().toLocaleDateString('pt-BR')},VR,,${s.vr.toFixed(2)},A PAGAR\n`;
     }
-
-    filteredExpenses.forEach(e => {
-        csvContent += `${new Date(e.date).toLocaleDateString('pt-BR')},Débito (${e.type}),${e.description || '-'},-${e.amount.toFixed(2)}\n`;
-    });
-    
+    filteredExpenses.forEach(e => { csvContent += `${new Date(e.date).toLocaleDateString('pt-BR')},Débito (${e.type}),${e.description || '-'},-${e.amount.toFixed(2)},${e.status || 'PENDENTE'}\n`; });
     csvContent += `\n,,,Saldo Liquido: ${netPay.toFixed(2)}`;
-
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", encodeURI(csvContent));
     link.setAttribute("download", `extrato_${selectedEntity.name.replace(/\s+/g, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
@@ -141,22 +128,27 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
             <h1 className="text-2xl font-bold text-gray-900">Folha de Pagamento</h1>
-            <p className="text-gray-500">Gestão integrada: Motoristas e Funcionários de Contratos</p>
+            <p className="text-gray-500">Controle financeiro de motoristas e colaboradores fixos</p>
         </div>
-        <div className="flex items-end gap-2 w-full sm:w-auto">
-            <div className="w-full sm:w-80">
-                 <Select label="Selecione o Beneficiário" value={selectedEntityId} onChange={(e) => setSelectedEntityId(e.target.value)}>
-                    <option value="">Selecione um nome...</option>
+        <div className="flex flex-col sm:flex-row items-end gap-3 w-full sm:w-auto">
+            <div className="w-full sm:min-w-[320px]">
+                 <Select 
+                    label="Colaborador ou Motorista" 
+                    value={selectedEntityId} 
+                    onChange={(e) => setSelectedEntityId(e.target.value)}
+                    className="h-11 shadow-sm border-gray-200"
+                 >
+                    <option value="">Selecione para detalhar...</option>
                     <optgroup label="Motoristas Parceiros">
                         {entities.filter(e => e.type === 'DRIVER').map(d => (
                             <option key={d.id} value={d.id}>{d.name} ({d.details})</option>
                         ))}
                     </optgroup>
-                    <optgroup label="Funcionários de Contratos Fixos">
+                    <optgroup label="Equipe de Operação / Contratos">
                         {entities.filter(e => e.type === 'STAFF').map(s => (
                             <option key={s.id} value={s.id}>{s.name} ({s.details})</option>
                         ))}
@@ -164,104 +156,102 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                  </Select>
             </div>
             {selectedEntityId && (
-                <div className="pb-0.5"><Button variant="outline" onClick={handleExport}><Icons.Download /> Exportar</Button></div>
+                <div className="w-full sm:w-auto">
+                    <Button variant="outline" onClick={handleExport} className="h-11 w-full sm:w-auto">
+                        <Icons.Download /> Exportar Extrato
+                    </Button>
+                </div>
             )}
         </div>
       </div>
 
       {!selectedEntityId ? (
-        <Card className="p-10 text-center text-gray-400 bg-gray-50 border-dashed">
-            <div className="flex justify-center mb-4"><Icons.Users /></div>
-            <p className="text-lg">Selecione um colaborador acima para visualizar o detalhamento.</p>
+        <Card className="p-16 text-center text-gray-400 bg-gray-50/50 border-dashed border-2 flex flex-col items-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <Icons.Users />
+            </div>
+            <p className="text-lg font-medium text-gray-500">Selecione um colaborador para iniciar a gestão financeira</p>
+            <p className="text-sm text-gray-400 mt-2">Você poderá visualizar créditos, lançar débitos e exportar comprovantes.</p>
         </Card>
       ) : (
-        <>
+        <div className="space-y-6">
+            {/* KPI Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-5 border-l-4 border-l-green-500">
-                    <span className="text-gray-500 text-xs font-bold uppercase">Total Créditos (Vencimentos)</span>
-                    <span className="text-2xl font-bold text-green-700 block mt-1">R$ {totalEarnings.toFixed(2)}</span>
-                    <span className="text-[10px] text-gray-400">{selectedEntity?.type === 'DRIVER' ? 'Soma das corridas concluídas' : 'Salário + Benefícios + Encargos'}</span>
+                <Card className="p-5 border-l-4 border-l-primary bg-white shadow-sm flex flex-col">
+                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total de Ganhos (Créditos)</span>
+                    <span className="text-2xl font-black text-gray-800">R$ {totalEarnings.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <p className="text-[10px] text-gray-400 mt-2">{selectedEntity?.type === 'DRIVER' ? 'Corridas finalizadas no período' : 'Salário base e benefícios fixos'}</p>
                 </Card>
-                <Card className="p-5 border-l-4 border-l-red-500">
-                    <span className="text-gray-500 text-xs font-bold uppercase">Total Débitos (Vales/Despesas)</span>
-                    <span className="text-2xl font-bold text-red-700 block mt-1">R$ {totalExpenses.toFixed(2)}</span>
+                <Card className="p-5 border-l-4 border-l-red-500 bg-white shadow-sm flex flex-col">
+                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Vales e Despesas (Débitos)</span>
+                    <span className="text-2xl font-black text-red-600">R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <p className="text-[10px] text-gray-400 mt-2">Soma de todos os lançamentos manuais</p>
                 </Card>
-                <Card className="p-5 border-l-4 border-l-primary bg-blue-50">
-                    <span className="text-blue-600 text-xs font-bold uppercase">Líquido a Pagar</span>
-                    <span className="text-3xl font-bold text-blue-800 block mt-1">R$ {netPay.toFixed(2)}</span>
+                <Card className="p-5 border-l-4 border-l-emerald-500 bg-emerald-50 shadow-md flex flex-col relative overflow-hidden">
+                    <div className="absolute -right-4 -bottom-4 opacity-10 text-emerald-600 scale-150 rotate-12"><Icons.DollarSign /></div>
+                    <span className="text-emerald-600 text-[10px] font-bold uppercase tracking-widest mb-1">Líquido a Pagar</span>
+                    <span className="text-3xl font-black text-emerald-700">R$ {netPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <p className="text-[10px] text-emerald-600 font-bold mt-2 uppercase tracking-tight">Pronto para processamento</p>
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                    <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        {selectedEntity?.type === 'DRIVER' ? 'Corridas Concluídas' : 'Composição de Vencimentos'}
-                    </h3>
-                    <Card className="overflow-hidden">
-                        <div className="max-h-[500px] overflow-y-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Credits Column */}
+                <div className="lg:col-span-7 space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="font-bold text-gray-700 text-xs uppercase tracking-widest flex items-center gap-2">
+                           <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                           Vencimentos e Créditos
+                        </h3>
+                    </div>
+                    <Card className="overflow-hidden border-t-2 border-primary/20">
+                        <div className="max-h-[520px] overflow-y-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50/80 border-b border-gray-100 text-[10px] text-gray-400 font-black uppercase sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-4 py-3">Descrição</th>
-                                        <th className="px-4 py-3 text-right">Valor</th>
+                                        <th className="px-5 py-4">Descrição do Lançamento</th>
+                                        <th className="px-5 py-4 text-right">Valor</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-50">
                                     {selectedEntity?.type === 'DRIVER' ? (
                                         filteredRequests.length === 0 ? (
-                                            <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-400">Nenhuma corrida.</td></tr>
+                                            <tr><td colSpan={2} className="px-6 py-12 text-center text-gray-400 italic">Sem registros de corridas.</td></tr>
                                         ) : (
                                             filteredRequests.map(req => (
-                                                <tr key={req.id} className="bg-white border-b">
-                                                    <td className="px-4 py-3">
-                                                        <div className="font-medium">Nota #{req.invoiceNumber}</div>
-                                                        <div className="text-[10px] text-gray-400">{req.destination}</div>
+                                                <tr key={req.id} className="hover:bg-gray-50 group">
+                                                    <td className="px-5 py-4">
+                                                        <div className="font-bold text-gray-900 text-xs">Frete Nota #{req.invoiceNumber}</div>
+                                                        <div className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[280px]">{req.destination}</div>
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {req.driverFee.toFixed(2)}</td>
+                                                    <td className="px-5 py-4 text-right">
+                                                        <span className="font-black text-emerald-600">R$ {req.driverFee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                    </td>
                                                 </tr>
                                             ))
                                         )
                                     ) : (
                                         <>
-                                            <tr className="bg-white border-b">
-                                                <td className="px-4 py-3">Salário Base</td>
-                                                <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).salary.toFixed(2)}</td>
+                                            <tr className="hover:bg-gray-50">
+                                                <td className="px-5 py-4 font-bold text-gray-900 text-xs">Salário Base Mensal</td>
+                                                <td className="px-5 py-4 text-right font-black text-emerald-600">R$ {(selectedEntity?.baseData as StaffExpense).salary.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                             </tr>
                                             {(selectedEntity?.baseData as StaffExpense).vr ? (
-                                                <tr className="bg-white border-b">
-                                                    <td className="px-4 py-3">Vale Refeição (VR)</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).vr?.toFixed(2)}</td>
+                                                <tr className="hover:bg-gray-50">
+                                                    <td className="px-5 py-4 font-bold text-gray-900 text-xs">Vale Refeição (VR)</td>
+                                                    <td className="px-5 py-4 text-right font-black text-emerald-600">R$ {(selectedEntity?.baseData as StaffExpense).vr?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                                 </tr>
                                             ) : null}
                                             {(selectedEntity?.baseData as StaffExpense).vt ? (
-                                                <tr className="bg-white border-b">
-                                                    <td className="px-4 py-3">Vale Transporte (VT)</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).vt?.toFixed(2)}</td>
+                                                <tr className="hover:bg-gray-50">
+                                                    <td className="px-5 py-4 font-bold text-gray-900 text-xs">Vale Transporte (VT)</td>
+                                                    <td className="px-5 py-4 text-right font-black text-emerald-600">R$ {(selectedEntity?.baseData as StaffExpense).vt?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                                 </tr>
                                             ) : null}
                                             {(selectedEntity?.baseData as StaffExpense).periculosidade ? (
-                                                <tr className="bg-white border-b">
-                                                    <td className="px-4 py-3">Adicional Periculosidade</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).periculosidade?.toFixed(2)}</td>
-                                                </tr>
-                                            ) : null}
-                                            {(selectedEntity?.baseData as StaffExpense).motoAluguel ? (
-                                                <tr className="bg-white border-b">
-                                                    <td className="px-4 py-3">Aluguel da Moto</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).motoAluguel?.toFixed(2)}</td>
-                                                </tr>
-                                            ) : null}
-                                            {(selectedEntity?.baseData as StaffExpense).fgts ? (
-                                                <tr className="bg-white border-b">
-                                                    <td className="px-4 py-3">FGTS (Encargo)</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).fgts?.toFixed(2)}</td>
-                                                </tr>
-                                            ) : null}
-                                            {(selectedEntity?.baseData as StaffExpense).inss ? (
-                                                <tr className="bg-white border-b">
-                                                    <td className="px-4 py-3">INSS (Encargo)</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-green-600">R$ {(selectedEntity?.baseData as StaffExpense).inss?.toFixed(2)}</td>
+                                                <tr className="hover:bg-gray-50">
+                                                    <td className="px-5 py-4 font-bold text-gray-900 text-xs">Adicional de Periculosidade</td>
+                                                    <td className="px-5 py-4 text-right font-black text-emerald-600">R$ {(selectedEntity?.baseData as StaffExpense).periculosidade?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                                 </tr>
                                             ) : null}
                                         </>
@@ -272,53 +262,127 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                     </Card>
                 </div>
 
-                <div className="space-y-4">
-                    <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                        Descontos / Vales lançados
-                    </h3>
+                {/* Expenses Column */}
+                <div className="lg:col-span-5 space-y-4">
+                    <div className="flex items-center px-1">
+                        <h3 className="font-bold text-gray-700 text-xs uppercase tracking-widest flex items-center gap-2">
+                           <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                           Lançamento de Débitos
+                        </h3>
+                    </div>
                     
-                    <Card className="p-4 bg-gray-50 border-gray-200">
-                        <form onSubmit={handleAdd} className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <Select label="Tipo" className="text-sm" value={newExpense.type} onChange={e => setNewExpense({...newExpense, type: e.target.value as ExpenseType})}>
-                                    <option value="VALE">Vale / Adiantamento</option>
-                                    <option value="GASOLINA">Combustível</option>
-                                    <option value="PEDAGIO">Pedágio</option>
-                                    <option value="OUTROS">Outros</option>
-                                </Select>
-                                <Input label="Data" type="date" className="text-sm" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} required />
-                            </div>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="col-span-2"><Input label="Descrição" className="text-sm" placeholder="Ref. Vale semanal" value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})} /></div>
-                                <Input label="Valor (R$)" type="number" step="0.01" className="text-sm" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} required />
-                            </div>
-                            <Button type="submit" variant="danger" className="w-full text-sm py-1.5">Lançar Débito</Button>
-                        </form>
-                    </Card>
+                    <Card className="p-0 border-t-2 border-red-200 overflow-hidden bg-gray-50/40">
+                        <div className="p-5 border-b border-gray-100 bg-white">
+                            <form onSubmit={handleAdd} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoria</label>
+                                        <Select 
+                                            label="" 
+                                            value={newExpense.type} 
+                                            onChange={e => setNewExpense({...newExpense, type: e.target.value as ExpenseType})}
+                                            className="h-10 border-gray-200 shadow-sm"
+                                        >
+                                            <option value="VALE">Vale Antecipado</option>
+                                            <option value="GASOLINA">Combustível</option>
+                                            <option value="PEDAGIO">Pedágio</option>
+                                            <option value="OUTROS">Outros Débitos</option>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Data</label>
+                                        <Input 
+                                            label="" 
+                                            type="date" 
+                                            value={newExpense.date} 
+                                            onChange={e => setNewExpense({...newExpense, date: e.target.value})} 
+                                            required 
+                                            className="h-10 border-gray-200 shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descrição</label>
+                                    <Input 
+                                        label="" 
+                                        placeholder="Ex: Vale semanal referente a..." 
+                                        value={newExpense.description} 
+                                        onChange={e => setNewExpense({...newExpense, description: e.target.value})}
+                                        className="h-10 border-gray-200 shadow-sm"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Valor do Débito (R$)</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span className="text-gray-400 text-xs font-bold">R$</span>
+                                        </div>
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            className="w-full border border-gray-200 rounded-md pl-9 pr-3 py-2 h-10 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all font-black text-red-600 shadow-sm"
+                                            value={newExpense.amount} 
+                                            onChange={e => setNewExpense({...newExpense, amount: e.target.value})} 
+                                            required 
+                                        />
+                                    </div>
+                                </div>
+                                <Button type="submit" variant="danger" className="w-full py-2.5 shadow-lg shadow-red-500/20 group">
+                                    <Icons.Plus /> Confirmar Débito
+                                </Button>
+                            </form>
+                        </div>
 
-                     <Card className="overflow-hidden">
+                        {/* Recent Debits Sub-table */}
                         <div className="max-h-[300px] overflow-y-auto">
-                            <table className="w-full text-sm text-left text-gray-500">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-100/50 text-[9px] text-gray-400 font-black uppercase">
                                     <tr>
-                                        <th className="px-4 py-3">Data</th>
-                                        <th className="px-4 py-3">Tipo</th>
-                                        <th className="px-4 py-3 text-right">Valor</th>
+                                        <th className="px-5 py-3">Histórico de Débitos</th>
+                                        <th className="px-5 py-3 text-center">Status</th>
+                                        <th className="px-5 py-3 text-right">Ação</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-100">
                                     {filteredExpenses.length === 0 ? (
-                                        <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400">Nenhum débito.</td></tr>
+                                        <tr><td colSpan={3} className="px-5 py-8 text-center text-gray-400 italic text-xs">Nenhum débito lançado.</td></tr>
                                     ) : (
                                         filteredExpenses.map(exp => (
-                                            <tr key={exp.id} className="bg-white border-b">
-                                                <td className="px-4 py-3 text-[10px]">{new Date(exp.date).toLocaleDateString('pt-BR')}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className="bg-red-50 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{exp.type}</span>
-                                                    <div className="text-[10px] text-gray-400">{exp.description}</div>
+                                            <tr key={exp.id} className="bg-white hover:bg-gray-50 group transition-colors">
+                                                <td className="px-5 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">{exp.type}</span>
+                                                        <span className="text-[10px] text-gray-400 font-medium">{new Date(exp.date).toLocaleDateString('pt-BR')}</span>
+                                                    </div>
+                                                    <div className="text-[10px] font-bold text-gray-700 mt-1">{exp.description || 'Sem descrição'}</div>
+                                                    <div className="font-black text-red-600 text-[11px] mt-1">R$ {exp.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right font-bold text-red-600">- R$ {exp.amount.toFixed(2)}</td>
+                                                <td className="px-5 py-3 text-center">
+                                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${exp.status === 'PAGO' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-orange-50 text-orange-700 border-orange-100 animate-pulse'}`}>
+                                                        {exp.status || 'PENDENTE'}
+                                                    </span>
+                                                    {exp.paidAt && (
+                                                        <div className="text-[8px] text-gray-400 font-bold mt-1 uppercase">Pago em: {new Date(exp.paidAt).toLocaleDateString('pt-BR')}</div>
+                                                    )}
+                                                </td>
+                                                <td className="px-5 py-3 text-right">
+                                                    {exp.status !== 'PAGO' ? (
+                                                        <button 
+                                                            onClick={() => handlePayExpense(exp)}
+                                                            className="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-md border border-emerald-100 shadow-sm transition-all"
+                                                            title="Liquidar Débito"
+                                                        >
+                                                            <div className="flex items-center gap-1">
+                                                                <Icons.DollarSign />
+                                                                <span className="text-[9px] font-black uppercase">Pagar</span>
+                                                            </div>
+                                                        </button>
+                                                    ) : (
+                                                        <div className="text-emerald-500 flex justify-end">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                                        </div>
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))
                                     )}
@@ -328,7 +392,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                     </Card>
                 </div>
             </div>
-        </>
+        </div>
       )}
     </div>
   );

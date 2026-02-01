@@ -12,11 +12,12 @@ import { Payroll } from './components/Payroll';
 import { Reports } from './components/Reports';
 import { FixedContracts } from './components/FixedContracts';
 import { CashFlow } from './components/CashFlow';
+import { Finance } from './components/Finance';
 import { Login } from './components/Login';
 import { Icons } from './components/Components';
 import { DataManager } from './services/dataManager';
 
-type ViewState = 'DASHBOARD' | 'NEW_REQUEST' | 'SETTINGS' | 'DRIVERS' | 'NEW_DRIVER' | 'CLIENTS' | 'NEW_CLIENT' | 'PAYROLL' | 'REPORTS' | 'FIXED_CONTRACTS' | 'CASH_FLOW';
+type ViewState = 'DASHBOARD' | 'NEW_REQUEST' | 'SETTINGS' | 'DRIVERS' | 'NEW_DRIVER' | 'CLIENTS' | 'NEW_CLIENT' | 'PAYROLL' | 'REPORTS' | 'FIXED_CONTRACTS' | 'CASH_FLOW' | 'FINANCE';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
@@ -160,6 +161,7 @@ const App: React.FC = () => {
   const canAccessReports = isAdmin || isOperational;
   const canAccessFixed = isAdmin;
   const canAccessCashFlow = isAdmin || isOperational;
+  const canAccessFinance = isAdmin; // Premium module only for admins
 
   return (
     <div className="min-h-screen bg-surface flex flex-col md:flex-row">
@@ -185,6 +187,7 @@ const App: React.FC = () => {
         </div>
         <nav className="flex-1 p-4 space-y-2">
             <button onClick={() => setCurrentView('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'DASHBOARD' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Home /> Dashboard</button>
+            {canAccessFinance && <button onClick={() => setCurrentView('FINANCE')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'FINANCE' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.PieChart /> Financeiro</button>}
             {canAccessReports && <button onClick={() => setCurrentView('REPORTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'REPORTS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.BarChart /> Relatórios</button>}
             {canAccessCashFlow && <button onClick={() => setCurrentView('CASH_FLOW')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'CASH_FLOW' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.DollarSign /> Fluxo de Caixa</button>}
             {canAccessFixed && <button onClick={() => setCurrentView('FIXED_CONTRACTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${currentView === 'FIXED_CONTRACTS' ? 'bg-primary text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Icons.Building /> Contratos Fixos</button>}
@@ -200,10 +203,10 @@ const App: React.FC = () => {
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center px-2 py-2 z-50 overflow-x-auto gap-2">
             <button onClick={() => setCurrentView('DASHBOARD')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'DASHBOARD' ? 'text-primary' : 'text-gray-400'}`}><Icons.Home /><span className="text-[10px]">Início</span></button>
+            {canAccessFinance && <button onClick={() => setCurrentView('FINANCE')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'FINANCE' ? 'text-primary' : 'text-gray-400'}`}><Icons.PieChart /><span className="text-[10px]">Financ.</span></button>}
             {canAccessReports && <button onClick={() => setCurrentView('REPORTS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'REPORTS' ? 'text-primary' : 'text-gray-400'}`}><Icons.BarChart /><span className="text-[10px]">Relat.</span></button>}
             {canAccessCashFlow && <button onClick={() => setCurrentView('CASH_FLOW')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'CASH_FLOW' ? 'text-primary' : 'text-gray-400'}`}><Icons.DollarSign /><span className="text-[10px]">Caixa</span></button>}
             <button onClick={() => setCurrentView('DRIVERS')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'DRIVERS' ? 'text-primary' : 'text-gray-400'}`}><Icons.Users /><span className="text-[10px]">Mot.</span></button>
-            <button onClick={() => setCurrentView('PAYROLL')} className={`flex-shrink-0 min-w-[64px] flex flex-col items-center p-1 ${currentView === 'PAYROLL' ? 'text-primary' : 'text-gray-400'}`}><Icons.DollarSign /><span className="text-[10px]">Folha</span></button>
       </div>
 
       <main className="flex-1 p-4 md:p-8 pb-24 overflow-y-auto">
@@ -214,15 +217,19 @@ const App: React.FC = () => {
               await refreshAllData();
               setIsLoading(false);
             }} />}
+            {currentView === 'FINANCE' && canAccessFinance && <Finance requests={requests} drivers={drivers} contracts={fixedContracts} expenses={expenses} />}
             {currentView === 'CASH_FLOW' && canAccessCashFlow && <CashFlow />}
             {currentView === 'FIXED_CONTRACTS' && canAccessFixed && <FixedContracts contracts={fixedContracts} onAddContract={handleAddFixedContract} onUpdateContract={handleUpdateFixedContract} onDeleteContract={handleDeleteFixedContract} />}
             {currentView === 'NEW_REQUEST' && <NewRequest rates={rates} drivers={drivers} clients={clients} existingRequests={requests} initialData={editingRequest} currentUser={currentUser} onSubmit={handleSaveRequest} onCancel={() => { setCurrentView('DASHBOARD'); setEditingRequest(undefined); }} />}
             {currentView === 'DRIVERS' && <Drivers drivers={drivers} onNewDriver={() => setCurrentView('NEW_DRIVER')} onEditDriver={(d) => { setEditingDriver(d); setCurrentView('NEW_DRIVER'); }} />}
             {currentView === 'NEW_DRIVER' && <NewDriver rates={rates} initialData={editingDriver} onSubmit={handleSaveDriver} onCancel={() => { setCurrentView('DRIVERS'); setEditingDriver(undefined); }} />}
-            {currentView === 'CLIENTS' && <Clients clients={clients} onNewClient={() => setCurrentView('NEW_CLIENT')} onEditClient={(c) => { setEditingClient(c); setCurrentView('NEW_CLIENT'); }} />}
+            {currentView === 'CLIENTS' && <Clients clients={clients} requests={requests} contracts={fixedContracts} onNewClient={() => setCurrentView('NEW_CLIENT')} onEditClient={(c) => { setEditingClient(c); setCurrentView('NEW_CLIENT'); }} />}
             {currentView === 'NEW_CLIENT' && <NewClient initialData={editingClient} onSubmit={handleSaveClient} onCancel={() => { setCurrentView('CLIENTS'); setEditingClient(undefined); }} />}
             {currentView === 'PAYROLL' && <Payroll drivers={drivers} requests={requests} expenses={expenses} onAddExpense={async (e: Omit<DriverExpense, 'id'>) => {
               await DataManager.addExpense(e);
+              await refreshAllData();
+            }} onUpdateExpense={async (e: DriverExpense) => {
+              await DataManager.updateExpense(e);
               await refreshAllData();
             }} />}
             {currentView === 'REPORTS' && <Reports requests={requests} clients={clients} onEditRequest={(r) => { setEditingRequest(r); setCurrentView('NEW_REQUEST'); }} onDeleteRequest={async (id) => {

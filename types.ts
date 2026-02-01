@@ -1,11 +1,9 @@
 
 export type VehicleType = 'MOTO' | 'CARRO' | 'UTILITARIO' | 'CAMINHAO' | 'PRESSKIT';
-
 export type RequestStatus = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO';
-
 export type ActivityType = 'COLETAR' | 'ENTREGAR' | 'COLETAR_ENTREGAR' | 'OUTROS';
-
 export type UserRole = 'ADMIN' | 'OPERATIONAL' | 'CLIENT';
+export type DriverStatus = 'DISPONIVEL' | 'EM_ROTA' | 'PAUSA';
 
 export interface User {
   id: string;
@@ -40,18 +38,50 @@ export interface TransportRequest {
   commissionPercentage?: number; 
 }
 
+export interface Driver {
+  id: string;
+  name: string;
+  cpf: string;
+  address: string;
+  vehicleType: VehicleType;
+  phone: string;
+  createdAt: string;
+  plate?: string;
+  model?: string;
+  color?: string;
+  status?: DriverStatus;
+  lastRegion?: string;
+  monthlyDeliveries?: number;
+  photoUrl?: string;
+}
+
 export interface StaffExpense {
   id: string;
   employeeName: string;
   role: string;
   department?: string; 
   salary: number;
+  bonus?: number;
   vr?: number;
   vt?: number;
   periculosidade?: number;
   motoAluguel?: number;
   fgts?: number;
   inss?: number;
+  paymentStatus?: 'PENDENTE' | 'PAGO';
+  paymentDate?: string;
+  createdAt: string;
+}
+
+export interface Invoice {
+  id: string;
+  companyName: string;
+  deliveryCount: number;
+  issueDate: string;
+  dueDate: string;
+  value: number;
+  status: 'PENDENTE' | 'PAGO' | 'VENCIDO';
+  type: 'RECEBIVEL' | 'PAGAVEL';
   createdAt: string;
 }
 
@@ -91,19 +121,6 @@ export interface VehicleRate {
   baseFee: number;
 }
 
-export interface Driver {
-  id: string;
-  name: string;
-  cpf: string;
-  address: string;
-  vehicleType: VehicleType;
-  phone: string;
-  createdAt: string;
-  plate?: string;
-  model?: string;
-  color?: string;
-}
-
 export interface Client {
   id: string;
   name: string;
@@ -126,6 +143,8 @@ export interface DriverExpense {
   amount: number;
   date: string;
   description?: string;
+  status?: 'PENDENTE' | 'PAGO';
+  paidAt?: string;
 }
 
 export const INITIAL_RATES: VehicleRate[] = [

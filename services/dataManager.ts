@@ -1,5 +1,5 @@
 
-import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract, FinancialTransaction, Driver, Client } from '../types';
+import { TransportRequest, DriverExpense, VehicleRate, INITIAL_RATES, RequestStatus, User, FixedContract, FinancialTransaction, Driver, Client, DriverStatus } from '../types';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const STORAGE_KEYS = {
@@ -46,7 +46,28 @@ export const DataManager = {
   },
 
   async seedData() {
-    console.log("Sistema em modo de produção.");
+    // Populate with some enhanced driver data if empty
+    const driversStr = localStorage.getItem(STORAGE_KEYS.DRIVERS);
+    if (!driversStr || JSON.parse(driversStr).length === 0) {
+        const mockDrivers: Driver[] = [
+            { 
+                id: 'd1', name: 'Ricardo Santos', vehicleType: 'MOTO', plate: 'ABC-1234', model: 'Honda CG 160', 
+                status: 'EM_ROTA', lastRegion: 'Zona Sul - Itaim Bibi', monthlyDeliveries: 45, phone: '(11) 99999-0001',
+                cpf: '000', address: 'Rua A', createdAt: new Date().toISOString()
+            },
+            { 
+                id: 'd2', name: 'Marcos Oliveira', vehicleType: 'UTILITARIO', plate: 'XYZ-9988', model: 'Fiorino 2023', 
+                status: 'DISPONIVEL', lastRegion: 'Zona Oeste - Lapa', monthlyDeliveries: 38, phone: '(11) 99999-0002',
+                cpf: '001', address: 'Rua B', createdAt: new Date().toISOString()
+            },
+            { 
+                id: 'd3', name: 'Julia Martins', vehicleType: 'CARRO', plate: 'KJH-4422', model: 'VW Gol G8', 
+                status: 'PAUSA', lastRegion: 'Centro - Paulista', monthlyDeliveries: 52, phone: '(11) 99999-0003',
+                cpf: '002', address: 'Rua C', createdAt: new Date().toISOString()
+            }
+        ];
+        localStorage.setItem(STORAGE_KEYS.DRIVERS, JSON.stringify(mockDrivers));
+    }
   },
 
   async authenticate(username: string, password: string): Promise<User | null> {
@@ -171,8 +192,16 @@ export const DataManager = {
   async updateRate(item: VehicleRate) { await this.update('rates', STORAGE_KEYS.RATES, item, 'type'); },
   
   async addExpense(item: Omit<DriverExpense, 'id'>) { 
-    const newItem = { ...item, id: Math.random().toString(36).substr(2, 9) };
+    const newItem = { 
+        ...item, 
+        id: Math.random().toString(36).substr(2, 9),
+        status: item.status || 'PENDENTE'
+    };
     await this.add('expenses', STORAGE_KEYS.EXPENSES, newItem); 
+  },
+
+  async updateExpense(item: DriverExpense) {
+      await this.update('expenses', STORAGE_KEYS.EXPENSES, item);
   },
 
   async addUser(item: User) { await this.add('users', STORAGE_KEYS.USERS, item); },

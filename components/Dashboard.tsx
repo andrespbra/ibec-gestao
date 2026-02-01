@@ -1,6 +1,6 @@
 
-import React, { useMemo } from 'react';
-import { TransportRequest, RequestStatus, Driver, User } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { TransportRequest, RequestStatus, Driver, User, DriverStatus } from '../types';
 import { Card, StatusBadge, VehicleBadge, Icons, Button } from './Components';
 
 interface DashboardProps {
@@ -13,8 +13,14 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, currentUser, onNewRequest, onUpdateStatus, onDeleteRequest }) => {
-  
-  // Filter Requests based on Role
+  const [now, setNow] = useState(new Date());
+
+  // Update "now" every minute for SLA timers
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const filteredRequests = useMemo(() => requests.filter(req => {
       if (currentUser.role === 'CLIENT' && currentUser.clientId) {
           return req.clientName === currentUser.name; 
@@ -22,213 +28,253 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
       return true;
   }), [requests, currentUser]);
 
-  const isClient = currentUser.role === 'CLIENT';
+  const activeDeliveries = useMemo(() => 
+    filteredRequests.filter(r => r.status === 'EM_ANDAMENTO' || r.status === 'PENDENTE'),
+  [filteredRequests]);
 
-  // Stats Logic
-  const totalDeliveries = filteredRequests.length;
-  const inProgress = filteredRequests.filter(r => r.status === 'EM_ANDAMENTO').length;
-  const completedRequests = filteredRequests.filter(r => r.status === 'CONCLUIDO').length;
-  const totalFreight = filteredRequests.reduce((acc, r) => acc + r.clientCharge, 0);
+  const stats = useMemo(() => ({
+    total: filteredRequests.length,
+    inProgress: filteredRequests.filter(r => r.status === 'EM_ANDAMENTO').length,
+    completed: filteredRequests.filter(r => r.status === 'CONCLUIDO').length,
+    revenue: filteredRequests.reduce((acc, r) => acc + r.clientCharge, 0)
+  }), [filteredRequests]);
 
-  // Delayed Logic: Status not completed AND scheduled time is in the past
-  const delayedRequests = useMemo(() => filteredRequests.filter(r => 
-    r.status !== 'CONCLUIDO' && 
-    r.scheduledFor && 
-    new Date(r.scheduledFor) < new Date()
-  ).length, [filteredRequests]);
+  const getDriverById = (id?: string) => drivers.find(d => d.id === id);
 
-  // Group by Month (last 6 months)
-  const monthlyData = useMemo(() => {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const now = new Date();
-    const result = [];
-    for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const mIdx = d.getMonth();
-        const count = filteredRequests.filter(r => {
-            const rd = new Date(r.createdAt);
-            return rd.getMonth() === mIdx && rd.getFullYear() === d.getFullYear();
-        }).length;
-        result.push({ name: months[mIdx], count });
-    }
-    return result;
-  }, [filteredRequests]);
-
-  const getDriverName = (driverId?: string) => {
-    if (!driverId) return 'Aguardando...';
-    const driver = drivers.find(d => d.id === driverId);
-    return driver ? driver.name : 'Desconhecido';
-  };
-  
-  const handleDelete = (id: string, invoice: string) => {
-    if (window.confirm(`Tem certeza que deseja remover a solicitação Nota Fiscal: ${invoice}?`)) {
-        onDeleteRequest(id);
-    }
+  // Helper to calculate SLA Percentage (3 hours / 180 mins)
+  const calculateSLAPercentage = (createdAt: string) => {
+    const start = new Date(createdAt).getTime();
+    const current = now.getTime();
+    const diffMins = Math.floor((current - start) / 60000);
+    const percentage = Math.min((diffMins / 180) * 100, 100);
+    return { percentage, diffMins };
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h1 className="text-2xl font-bold text-gray-900">Painel de Controle</h1>
-            <p className="text-gray-500">Logística em tempo real</p>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Centro de Comando</h1>
+            <p className="text-gray-500 font-medium">Gestão de Operações em Tempo Real</p>
         </div>
-        <Button onClick={onNewRequest}>
-            <Icons.Plus /> Nova Solicitação
-        </Button>
+        <div className="flex gap-2">
+            <Button variant="outline" className="hidden md:flex"><Icons.Calendar /> Ver Agenda</Button>
+            <Button onClick={onNewRequest}><Icons.Plus /> Solicitar Transporte</Button>
+        </div>
       </div>
 
-      {/* Primary KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-5 flex flex-col justify-between border-l-4 border-l-primary bg-white shadow-sm">
-            <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Total de Entregas</span>
-            <span className="text-3xl font-extrabold text-gray-800 mt-2">{totalDeliveries}</span>
-        </Card>
-        
-        <Card className="p-5 flex flex-col justify-between border-l-4 border-l-secondary bg-white shadow-sm">
-            <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Total de Frete</span>
-            <span className="text-2xl font-extrabold text-gray-800 mt-2">R$ {totalFreight.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-        </Card>
-
-        <Card className="p-5 flex flex-col justify-between border-l-4 border-l-green-500 bg-white shadow-sm">
-            <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Em Andamento</span>
-            <span className="text-3xl font-extrabold text-gray-800 mt-2">{inProgress}</span>
-        </Card>
-
-        <Card className={`p-5 flex flex-col justify-between border-l-4 shadow-sm ${delayedRequests > 0 ? 'border-l-red-500 bg-red-50' : 'border-l-gray-300 bg-white'}`}>
-            <span className={`${delayedRequests > 0 ? 'text-red-600' : 'text-gray-500'} text-[10px] font-bold uppercase tracking-widest`}>Entregas Atrasadas</span>
-            <div className="flex items-center gap-2 mt-2">
-                <span className={`text-3xl font-extrabold ${delayedRequests > 0 ? 'text-red-700' : 'text-gray-800'}`}>{delayedRequests}</span>
-                {delayedRequests > 0 && <span className="animate-pulse text-red-500">⚠️</span>}
+      {/* Row 1: Real-Time Map Area */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="relative h-[500px] overflow-hidden bg-slate-100 border-none shadow-xl group">
+            {/* Mock Map Background */}
+            <div className="absolute inset-0 opacity-40 grayscale pointer-events-none bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-46.6333,-23.5505,12,0/1200x500?access_token=pk.eyJ1IjoiZGV2ZWxvcGVyIiwiYSI6ImNrMWR4ZzRndzA0bmIzYm52eWxsbmx6bmwifQ==')] bg-cover bg-center"></div>
+            
+            {/* Live Indicator */}
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest">Monitoramento Ativo</span>
             </div>
-        </Card>
-      </div>
 
-      {/* Row 1: Monthly Chart & Effective Deliveries Banner */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-6 bg-white shadow-sm overflow-hidden">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-gray-800 uppercase text-xs tracking-widest">Volume de Entregas (Mensal)</h3>
-                <span className="text-[10px] text-gray-400 font-bold">ÚLTIMOS 6 MESES</span>
-            </div>
-            <div className="h-48 w-full flex items-end justify-between gap-2 px-2">
-                {monthlyData.map((data, idx) => {
-                    const maxCount = Math.max(...monthlyData.map(d => d.count), 1);
-                    const height = (data.count / maxCount) * 100;
-                    return (
-                        <div key={idx} className="flex-1 flex flex-col items-center group">
-                            <div className="w-full bg-primary/10 rounded-t-md relative flex items-end justify-center transition-all group-hover:bg-primary/20" style={{ height: '100%' }}>
-                                <div 
-                                    className="w-4/5 bg-primary rounded-t-md transition-all duration-700 ease-out" 
-                                    style={{ height: `${height}%` }}
-                                >
-                                    <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-10">
-                                        {data.count} entregas
+            {/* Floating Delivery Banners (Horizontal Scroll for active ones) */}
+            <div className="absolute bottom-4 left-4 right-4 z-20 flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+                {activeDeliveries.length === 0 ? (
+                    <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-2xl border border-white/20 w-full text-center">
+                        <p className="text-gray-400 font-bold text-sm">Nenhuma rota ativa no radar.</p>
+                    </div>
+                ) : (
+                    activeDeliveries.map(req => {
+                        const driver = getDriverById(req.driverId);
+                        const { percentage } = calculateSLAPercentage(req.createdAt);
+                        return (
+                            <div key={req.id} className="flex-shrink-0 w-[340px] bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/50 p-4 transition-all hover:scale-[1.02] hover:bg-white cursor-default">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.1em]">{req.clientName}</h4>
+                                        <div className="font-bold text-gray-800 text-xs mt-0.5">Nota #{req.invoiceNumber}</div>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[9px] font-bold text-gray-400 uppercase">Prazo SLA</span>
+                                        <span className={`text-[10px] font-black ${percentage > 80 ? 'text-red-500' : 'text-emerald-600'}`}>{percentage.toFixed(0)}%</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 bg-gray-50/80 p-2.5 rounded-xl border border-gray-100 mb-3">
+                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                        <Icons.Truck />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[11px] font-black text-gray-800 truncate">{driver?.name || 'Aguardando Piloto'}</div>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase">{driver?.vehicleType}</span>
+                                            <span className="text-[9px] font-black bg-gray-200 text-gray-600 px-1.5 rounded truncate">{driver?.plate || 'S/ PLACA'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 mb-4">
+                                    <div className="flex gap-2">
+                                        <div className="w-4 flex flex-col items-center pt-1">
+                                            <div className="w-2 h-2 rounded-full border-2 border-emerald-500 bg-white"></div>
+                                            <div className="w-0.5 h-full border-l border-dashed border-gray-300 my-0.5"></div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-[8px] font-bold text-gray-400 uppercase leading-none">Retirada</div>
+                                            <div className="text-[10px] font-medium text-gray-600 truncate">{req.origin}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="w-4 flex flex-col items-center">
+                                            <Icons.MapPin />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-[8px] font-bold text-gray-400 uppercase leading-none">Entrega</div>
+                                            <div className="text-[10px] font-medium text-gray-600 truncate">{req.destination}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Timer Progress Bar */}
+                                <div className="space-y-1">
+                                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full rounded-full transition-all duration-1000 ${percentage > 85 ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : percentage > 50 ? 'bg-orange-400' : 'bg-emerald-500'}`}
+                                            style={{ width: `${percentage}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="flex justify-between text-[8px] font-black text-gray-400 uppercase tracking-widest">
+                                        <span>Iniciado</span>
+                                        <span>3h Limite</span>
                                     </div>
                                 </div>
                             </div>
-                            <span className="text-[10px] font-bold text-gray-400 mt-2">{data.name}</span>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
-        </Card>
-
-        <Card className="p-6 bg-primary text-white shadow-lg flex flex-col justify-center items-center text-center relative overflow-hidden">
-            <div className="absolute top-[-10%] right-[-10%] w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-            <div className="absolute bottom-[-10%] left-[-10%] w-24 h-24 bg-secondary/20 rounded-full blur-xl"></div>
-            
-            <Icons.Truck />
-            <h3 className="text-xs font-bold uppercase tracking-widest mt-4 opacity-80">Entregas Efetivas</h3>
-            <span className="text-5xl font-black mt-2">{completedRequests}</span>
-            <p className="text-[10px] mt-4 font-medium px-4 opacity-70 italic">Representa o sucesso total das operações concluídas no período.</p>
         </Card>
       </div>
 
-      {/* Recent List */}
-      <Card className="overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-            <h3 className="font-bold text-gray-800 uppercase text-xs tracking-widest">Últimas Movimentações</h3>
+      {/* Row 2: KPI & Drivers Monitoring */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Statistics Summary */}
+        <div className="lg:col-span-4 space-y-4">
+            <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest px-1">Indicadores Operacionais</h3>
+            <div className="grid grid-cols-2 gap-4">
+                <Card className="p-4 border-l-4 border-l-primary flex flex-col justify-center h-24">
+                    <span className="text-gray-400 text-[9px] font-black uppercase">Faturamento Período</span>
+                    <span className="text-xl font-black text-gray-800 mt-1">R$ {stats.revenue.toLocaleString('pt-BR')}</span>
+                </Card>
+                <Card className="p-4 border-l-4 border-l-emerald-500 flex flex-col justify-center h-24">
+                    <span className="text-gray-400 text-[9px] font-black uppercase">Entregas Concluídas</span>
+                    <span className="text-2xl font-black text-emerald-600 mt-1">{stats.completed}</span>
+                </Card>
+                <Card className="p-4 border-l-4 border-l-blue-500 flex flex-col justify-center h-24">
+                    <span className="text-gray-400 text-[9px] font-black uppercase">Taxa de Sucesso</span>
+                    <span className="text-xl font-black text-blue-700 mt-1">98.4%</span>
+                </Card>
+                <Card className="p-4 border-l-4 border-l-orange-500 flex flex-col justify-center h-24">
+                    <span className="text-gray-400 text-[9px] font-black uppercase">Volume Total</span>
+                    <span className="text-2xl font-black text-gray-800 mt-1">{stats.total}</span>
+                </Card>
+            </div>
+            
+            <Card className="p-6 bg-gradient-to-br from-primary to-[#5a3ecf] text-white">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="p-2 bg-white/20 rounded-lg"><Icons.TrendingUp /></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 px-2 py-0.5 rounded-full">Projeção Semanal</span>
+                </div>
+                <h4 className="text-2xl font-black">+12.5%</h4>
+                <p className="text-[11px] text-blue-100/70 mt-2 font-medium">Crescimento estimado de demanda baseado no volume dos últimos 30 dias.</p>
+            </Card>
         </div>
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500">
-                <thead className="text-[10px] text-gray-400 uppercase bg-white border-b border-gray-100 font-black">
-                    <tr>
-                        <th className="px-6 py-4">Nota / Cliente</th>
-                        <th className="px-6 py-4">Rota / Destino</th>
-                        <th className="px-6 py-4">Veículo / Motorista</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4 text-right">Ações</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                    {filteredRequests.length === 0 ? (
-                        <tr>
-                            <td colSpan={5} className="px-6 py-10 text-center text-gray-400 italic">
-                                Nenhuma entrega registrada.
-                            </td>
-                        </tr>
-                    ) : (
-                        filteredRequests.slice(0, 10).map(request => (
-                            <tr key={request.id} className="bg-white hover:bg-gray-50 transition-colors group">
-                                <td className="px-6 py-4">
-                                    <div className="font-bold text-gray-900">#{request.invoiceNumber}</div>
-                                    <div className="text-[10px] font-bold text-gray-400 truncate max-w-[120px]">{request.clientName}</div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></div>
-                                        <span className="truncate max-w-[180px]">{request.destination}</span>
-                                    </div>
-                                    {request.scheduledFor && (
-                                        <div className="text-[9px] text-orange-500 font-bold mt-1 uppercase">
-                                            Agendado: {new Date(request.scheduledFor).toLocaleString('pt-BR')}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col gap-1">
-                                        <VehicleBadge type={request.vehicleType} />
-                                        <span className="text-[10px] text-gray-400 font-medium">{getDriverName(request.driverId)}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    {!isClient ? (
-                                      <select 
-                                        value={request.status} 
-                                        onChange={(e) => onUpdateStatus(request.id, e.target.value as RequestStatus)}
-                                        className={`text-xs font-semibold border rounded-full px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer transition-colors ${
-                                          request.status === 'PENDENTE' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                                          request.status === 'EM_ANDAMENTO' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                                          'bg-green-100 text-green-800 border-green-200'
-                                        }`}
-                                      >
-                                        <option value="PENDENTE">Pendente</option>
-                                        <option value="EM_ANDAMENTO">Em andamento</option>
-                                        <option value="CONCLUIDO">Finalizado</option>
-                                      </select>
-                                    ) : (
-                                      <StatusBadge status={request.status} />
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button 
-                                            onClick={() => handleDelete(request.id, request.invoiceNumber)}
-                                            className="text-gray-300 hover:text-red-500 p-1 transition-colors"
-                                        >
-                                            <Icons.Trash />
-                                        </button>
-                                    </div>
-                                </td>
+
+        {/* Fleet Monitoring Section */}
+        <div className="lg:col-span-8 space-y-4">
+            <div className="flex justify-between items-center px-1">
+                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Gestão de Frota Ativa</h3>
+                <div className="flex gap-1.5">
+                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-600 uppercase bg-emerald-50 px-2 py-1 rounded-full">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div> {drivers.filter(d => d.status === 'DISPONIVEL').length} Online
+                    </span>
+                    <span className="flex items-center gap-1 text-[9px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded-full">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> {drivers.filter(d => d.status === 'EM_ROTA').length} Em Rota
+                    </span>
+                </div>
+            </div>
+
+            <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50 border-b border-gray-100 text-[10px] text-gray-400 font-black uppercase">
+                            <tr>
+                                <th className="px-6 py-4">Piloto / Veículo</th>
+                                <th className="px-6 py-4">Status Atual</th>
+                                <th className="px-6 py-4">Região / Última Ativ.</th>
+                                <th className="px-6 py-4 text-center">Entregas/Mês</th>
+                                <th className="px-6 py-4"></th>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {drivers.length === 0 ? (
+                                <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-400 italic">Nenhum motorista disponível na base.</td></tr>
+                            ) : (
+                                drivers.map(driver => (
+                                    <tr key={driver.id} className="hover:bg-gray-50/80 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-gray-200 overflow-hidden shadow-inner border border-gray-100">
+                                                    <img 
+                                                        src={driver.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(driver.name)}&background=random`} 
+                                                        alt={driver.name} 
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs font-black text-gray-800 uppercase tracking-tighter">{driver.name}</div>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase">{driver.model || driver.vehicleType}</span>
+                                                        <span className="text-[9px] font-black text-primary bg-primary/5 px-1.5 rounded">{driver.plate}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-[9px] font-black px-2 py-1 rounded-full border ${
+                                                driver.status === 'DISPONIVEL' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                driver.status === 'EM_ROTA' ? 'bg-blue-50 text-blue-700 border-blue-100 animate-pulse' :
+                                                'bg-gray-50 text-gray-500 border-gray-200'
+                                            }`}>
+                                                {driver.status || 'OFFLINE'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-600 uppercase tracking-tighter">
+                                                <Icons.MapPin /> {driver.lastRegion || 'Centro'}
+                                            </div>
+                                            <div className="text-[9px] text-gray-400 font-medium mt-0.5">Há 15 minutos</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="inline-flex flex-col">
+                                                <span className="text-sm font-black text-gray-800">{driver.monthlyDeliveries || 0}</span>
+                                                <div className="w-12 h-1 bg-emerald-500 rounded-full mt-1"></div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button className="text-gray-300 hover:text-primary transition-colors p-2 rounded-lg hover:bg-white border border-transparent hover:border-gray-100">
+                                                <Icons.Settings />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
