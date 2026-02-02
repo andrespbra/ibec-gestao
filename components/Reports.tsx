@@ -55,8 +55,13 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
   const [vehicleFilter, setVehicleFilter] = useState<VehicleType | 'ALL'>('ALL');
   const [clientFilter, setClientFilter] = useState<string>('ALL');
 
-  // Helper to get the actual service date
+  // Helper to get the actual service date - PRIORITIZING requestDate
   const getServiceDate = (req: TransportRequest): Date => {
+    if (req.requestDate) {
+      // Create date from YYYY-MM-DD
+      const [y, m, d] = req.requestDate.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
     return req.scheduledFor ? new Date(req.scheduledFor) : new Date(req.createdAt);
   };
 
@@ -64,11 +69,11 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
   const filteredData = useMemo(() => {
     return requests.filter(req => {
       const serviceDate = getServiceDate(req);
-      if (startDate && serviceDate < new Date(startDate)) return false;
-      if (endDate) {
-        const sDateStr = serviceDate.toISOString().split('T')[0];
-        if (sDateStr > endDate) return false;
-      }
+      const serviceDateStr = serviceDate.toISOString().split('T')[0];
+      
+      if (startDate && serviceDateStr < startDate) return false;
+      if (endDate && serviceDateStr > endDate) return false;
+      
       if (statusFilter !== 'ALL' && req.status !== statusFilter) return false;
       if (vehicleFilter !== 'ALL' && req.vehicleType !== vehicleFilter) return false;
       if (clientFilter !== 'ALL' && req.clientName !== clientFilter) return false;
@@ -394,7 +399,7 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                             <tr key={req.id} className="bg-white hover:bg-gray-50/80 transition-all group">
                                 <td className="px-6 py-4 whitespace-nowrap text-[11px] font-bold text-gray-500">
                                     {date.toLocaleDateString('pt-BR')}
-                                    <div className="text-[9px] opacity-40 uppercase">{date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    <div className="text-[9px] opacity-40 uppercase">{req.requestTime || date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="font-black text-gray-900 text-xs uppercase tracking-tight group-hover:text-primary transition-colors">{req.clientName}</div>
