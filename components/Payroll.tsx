@@ -69,7 +69,6 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
         description: expense.description || '',
         date: expense.date
     });
-    // Scroll suave para o formulário
     window.scrollTo({ top: 100, behavior: 'smooth' });
   };
 
@@ -133,6 +132,17 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     return d.getMonth() === filterMonth && d.getFullYear() === filterYear;
   };
 
+  // 1. Filtrar comissões onde o nome do colaborador selecionado coincide com o "commissionedName" do pedido
+  const filteredCommissions = useMemo(() => {
+    if (!selectedEntity) return [];
+    return requests.filter(r => 
+        r.commissionedName === selectedEntity.name && 
+        r.status === 'CONCLUIDO' &&
+        isWithinPeriod(r.createdAt)
+    );
+  }, [requests, selectedEntity, filterMonth, filterYear]);
+
+  // 2. Filtrar corridas diretas se for motorista
   const filteredRequests = useMemo(() => {
     return requests.filter(r => 
         r.driverId === selectedEntityId && 
@@ -148,14 +158,24 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     );
   }, [expenses, selectedEntityId, filterMonth, filterYear]);
 
-  // Cálculos de Totais
+  // 3. Cálculos de Totais (Base + Comissões)
+  const totalCommissionValue = useMemo(() => {
+    return filteredCommissions.reduce((acc, r) => {
+        const value = (r.clientCharge * (r.commissionPercentage || 0)) / 100;
+        return acc + value;
+    }, 0);
+  }, [filteredCommissions]);
+
   const earnings = useMemo(() => {
+    let baseEarnings = 0;
     if (selectedEntity?.type === 'STAFF') {
         const s = selectedEntity.baseData as StaffExpense;
-        return (s.salary || 0) + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0);
+        baseEarnings = (s.salary || 0) + (s.vr || 0) + (s.vt || 0) + (s.periculosidade || 0);
+    } else {
+        baseEarnings = filteredRequests.reduce((acc, r) => acc + r.driverFee, 0);
     }
-    return filteredRequests.reduce((acc, r) => acc + r.driverFee, 0);
-  }, [selectedEntity, filteredRequests]);
+    return baseEarnings + totalCommissionValue;
+  }, [selectedEntity, filteredRequests, totalCommissionValue]);
 
   const totalExpenses = filteredExpenses.reduce((acc, e) => acc + e.amount, 0);
   const netPay = earnings - totalExpenses;
@@ -220,57 +240,102 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="p-6 border-l-4 border-l-primary flex flex-col">
                     <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total de Ganhos</span>
-                    <span className="text-2xl font-black text-gray-900 mt-1">R$ {earnings.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                    <div className="text-[10px] text-emerald-500 font-bold mt-2">Corridas em {months[filterMonth]}</div>
+                    <span className="text-2xl font-black text-gray-900 mt-1">R$ {earnings.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="text-[10px] text-emerald-500 font-bold mt-2">
+                        {totalCommissionValue > 0 ? `Inclui R$ ${totalCommissionValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em comissões` : `Corridas em ${months[filterMonth]}`}
+                    </div>
                 </Card>
                 <Card className="p-6 border-l-4 border-l-red-500 flex flex-col">
                     <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Descontos</span>
-                    <span className="text-2xl font-black text-red-600 mt-1">R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-2xl font-black text-red-600 mt-1">R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     <div className="text-[10px] text-gray-400 font-bold mt-2">Vales e despesas lançadas</div>
                 </Card>
                 <Card className="p-6 border-l-4 border-l-emerald-500 bg-emerald-50 flex flex-col">
                     <span className="text-emerald-700 text-[10px] font-black uppercase tracking-widest">Saldo Líquido</span>
-                    <span className="text-3xl font-black text-emerald-700 mt-1">R$ {netPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-3xl font-black text-emerald-700 mt-1">R$ {netPay.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     <div className="text-[10px] text-emerald-600 font-black mt-2 uppercase tracking-tight">Pronto para pagamento</div>
                 </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Coluna de Créditos: Corridas Finalizadas */}
+                {/* Coluna de Créditos: Corridas e Comissões */}
                 <div className="lg:col-span-7 space-y-4">
                     <h3 className="text-xs font-black text-gray-700 uppercase tracking-widest px-1 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        Corridas Concluídas ({filteredRequests.length})
+                        Extrato de Créditos (Ganhos)
                     </h3>
                     <Card className="overflow-hidden">
                         <div className="max-h-[600px] overflow-y-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase border-b sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-5 py-4">Data / Documento</th>
-                                        <th className="px-5 py-4">Destino</th>
+                                        <th className="px-5 py-4">Origem / Documento</th>
+                                        <th className="px-5 py-4">Referência</th>
                                         <th className="px-5 py-4 text-right">Crédito (R$)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {filteredRequests.length === 0 ? (
-                                        <tr><td colSpan={3} className="px-6 py-20 text-center text-gray-400 italic text-xs">Nenhuma corrida concluída neste período.</td></tr>
-                                    ) : (
-                                        filteredRequests.map(req => (
-                                            <tr key={req.id} className="hover:bg-gray-50 transition-colors group">
+                                    {/* Mostrar Salário Base se for STAFF */}
+                                    {selectedEntity?.type === 'STAFF' && (
+                                        <tr className="bg-primary/5">
+                                            <td className="px-5 py-4">
+                                                <div className="text-[11px] font-black text-primary uppercase">Salário Base + Benefícios</div>
+                                                <div className="text-[10px] text-gray-400 font-bold">Folha Mensal</div>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="text-[9px] text-gray-400 uppercase font-black">Contrato Fixo</div>
+                                            </td>
+                                            <td className="px-5 py-4 text-right">
+                                                <span className="text-primary font-black text-xs">
+                                                    {( (selectedEntity.baseData as StaffExpense).salary + 
+                                                       ((selectedEntity.baseData as StaffExpense).vr || 0) + 
+                                                       ((selectedEntity.baseData as StaffExpense).vt || 0) + 
+                                                       ((selectedEntity.baseData as StaffExpense).periculosidade || 0)
+                                                    ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {/* Mostrar Fretes Diretos se for Motorista */}
+                                    {filteredRequests.map(req => (
+                                        <tr key={req.id} className="hover:bg-gray-50 transition-colors group">
+                                            <td className="px-5 py-4">
+                                                <div className="text-[11px] font-black text-gray-900">Frete Realizado</div>
+                                                <div className="text-[10px] text-gray-400 font-bold">Nota #{req.invoiceNumber}</div>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <div className="text-[11px] font-bold text-gray-600 truncate max-w-[150px]" title={req.destination}>{req.destination}</div>
+                                                <div className="text-[9px] text-gray-400 uppercase font-black">{req.vehicleType}</div>
+                                            </td>
+                                            <td className="px-5 py-4 text-right">
+                                                <span className="text-emerald-600 font-black text-xs">+ {req.driverFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+
+                                    {/* Mostrar Comissões para qualquer entidade */}
+                                    {filteredCommissions.map(req => {
+                                        const commValue = (req.clientCharge * (req.commissionPercentage || 0)) / 100;
+                                        return (
+                                            <tr key={`comm-${req.id}`} className="hover:bg-orange-50 transition-colors group border-l-4 border-l-orange-400">
                                                 <td className="px-5 py-4">
-                                                    <div className="text-[11px] font-black text-gray-900">Nota #{req.invoiceNumber}</div>
-                                                    <div className="text-[10px] text-gray-400 font-bold">{new Date(req.createdAt).toLocaleDateString('pt-BR')}</div>
+                                                    <div className="text-[11px] font-black text-orange-700 uppercase">Comissão de Venda/Agenciamento</div>
+                                                    <div className="text-[10px] text-orange-600/60 font-bold">Nota #{req.invoiceNumber}</div>
                                                 </td>
                                                 <td className="px-5 py-4">
-                                                    <div className="text-[11px] font-bold text-gray-600 truncate max-w-[200px]" title={req.destination}>{req.destination}</div>
-                                                    <div className="text-[9px] text-gray-400 uppercase font-black">{req.vehicleType}</div>
+                                                    <div className="text-[11px] font-bold text-gray-600 truncate max-w-[150px]">{req.clientName}</div>
+                                                    <div className="text-[9px] text-orange-500 uppercase font-black">Taxa: {req.commissionPercentage}%</div>
                                                 </td>
                                                 <td className="px-5 py-4 text-right">
-                                                    <span className="text-emerald-600 font-black text-xs">+ {req.driverFee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                    <span className="text-orange-600 font-black text-xs">+ {commValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </td>
                                             </tr>
-                                        ))
+                                        );
+                                    })}
+
+                                    {filteredRequests.length === 0 && filteredCommissions.length === 0 && selectedEntity?.type === 'DRIVER' && (
+                                        <tr><td colSpan={3} className="px-6 py-20 text-center text-gray-400 italic text-xs">Nenhum crédito (frete ou comissão) encontrado neste período.</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -360,7 +425,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                                     <div className="text-[9px] text-gray-400 font-bold">{new Date(exp.date).toLocaleDateString('pt-BR')}</div>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <span className="text-red-600 font-black text-[11px]">- {exp.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                    <span className="text-red-600 font-black text-[11px]">- {exp.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <div className="flex justify-end items-center gap-1">
