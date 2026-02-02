@@ -138,7 +138,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     return requests.filter(r => 
         r.commissionedName === selectedEntity.name && 
         r.status === 'CONCLUIDO' &&
-        isWithinPeriod(r.createdAt)
+        isWithinPeriod(r.requestDate || r.createdAt)
     );
   }, [requests, selectedEntity, filterMonth, filterYear]);
 
@@ -147,7 +147,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
     return requests.filter(r => 
         r.driverId === selectedEntityId && 
         r.status === 'CONCLUIDO' &&
-        isWithinPeriod(r.createdAt)
+        isWithinPeriod(r.requestDate || r.createdAt)
     );
   }, [requests, selectedEntityId, filterMonth, filterYear]);
 
@@ -188,18 +188,18 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div className="space-y-1">
             <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Folha de Pagamento</h1>
-            <p className="text-gray-500 text-sm font-medium">Gestão de repasses e conciliação de despesas</p>
+            <p className="text-gray-500 text-sm font-medium">Gestão de repasses, comissões e despesas</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
             <div className="flex-1 sm:w-64">
                 <Select 
-                    label="Colaborador" 
+                    label="Colaborador Selecionado" 
                     value={selectedEntityId} 
                     onChange={(e) => setSelectedEntityId(e.target.value)}
                     className="h-10 text-xs font-bold"
                 >
-                    <option value="">Selecione um motorista...</option>
+                    <option value="">Escolha um perfil...</option>
                     {entities.map(e => (
                         <option key={e.id} value={e.id}>{e.name} ({e.type === 'DRIVER' ? 'Motorista' : 'Staff'})</option>
                     ))}
@@ -207,7 +207,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
             </div>
             <div className="flex gap-2">
                 <Select 
-                    label="Mês" 
+                    label="Mês Ref." 
                     value={filterMonth} 
                     onChange={e => setFilterMonth(parseInt(e.target.value))}
                     className="w-32 h-10 text-xs font-bold"
@@ -215,12 +215,12 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                     {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
                 </Select>
                 <Select 
-                    label="Ano" 
+                    label="Ano Ref." 
                     value={filterYear} 
                     onChange={e => setFilterYear(parseInt(e.target.value))}
                     className="w-24 h-10 text-xs font-bold"
                 >
-                    {[2023, 2024, 2025].map(y => <option key={y} value={y}>{y}</option>)}
+                    {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                 </Select>
             </div>
         </div>
@@ -232,28 +232,28 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                 <Icons.Users />
             </div>
             <h3 className="text-gray-800 font-black uppercase text-sm tracking-widest">Aguardando Seleção</h3>
-            <p className="text-gray-400 text-xs mt-2 max-w-xs">Selecione um motorista ou colaborador acima para visualizar o extrato de ganhos e despesas.</p>
+            <p className="text-gray-400 text-xs mt-2 max-w-xs">Selecione um motorista ou colaborador acima para visualizar o extrato de ganhos e comissões.</p>
         </Card>
       ) : (
         <div className="space-y-6">
             {/* KPI Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="p-6 border-l-4 border-l-primary flex flex-col">
-                    <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total de Ganhos</span>
+                    <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Receita Bruta (Ganhos)</span>
                     <span className="text-2xl font-black text-gray-900 mt-1">R$ {earnings.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     <div className="text-[10px] text-emerald-500 font-bold mt-2">
-                        {totalCommissionValue > 0 ? `Inclui R$ ${totalCommissionValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em comissões` : `Corridas em ${months[filterMonth]}`}
+                        {totalCommissionValue > 0 ? `Inclui R$ ${totalCommissionValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em comissões` : `Total de fretes em ${months[filterMonth]}`}
                     </div>
                 </Card>
                 <Card className="p-6 border-l-4 border-l-red-500 flex flex-col">
-                    <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Descontos</span>
+                    <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Descontos / Vales</span>
                     <span className="text-2xl font-black text-red-600 mt-1">R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    <div className="text-[10px] text-gray-400 font-bold mt-2">Vales e despesas lançadas</div>
+                    <div className="text-[10px] text-gray-400 font-bold mt-2">Combustível, vales e outros débitos</div>
                 </Card>
-                <Card className="p-6 border-l-4 border-l-emerald-500 bg-emerald-50 flex flex-col">
-                    <span className="text-emerald-700 text-[10px] font-black uppercase tracking-widest">Saldo Líquido</span>
+                <Card className="p-6 border-l-4 border-l-emerald-500 bg-emerald-50 flex flex-col shadow-lg shadow-emerald-500/10">
+                    <span className="text-emerald-700 text-[10px] font-black uppercase tracking-widest">Saldo Líquido a Pagar</span>
                     <span className="text-3xl font-black text-emerald-700 mt-1">R$ {netPay.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    <div className="text-[10px] text-emerald-600 font-black mt-2 uppercase tracking-tight">Pronto para pagamento</div>
+                    <div className="text-[10px] text-emerald-600 font-black mt-2 uppercase tracking-tight">Valor conciliado para repasse</div>
                 </Card>
             </div>
 
@@ -262,15 +262,15 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                 <div className="lg:col-span-7 space-y-4">
                     <h3 className="text-xs font-black text-gray-700 uppercase tracking-widest px-1 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        Extrato de Créditos (Ganhos)
+                        Extrato Detalhado de Receitas
                     </h3>
                     <Card className="overflow-hidden">
                         <div className="max-h-[600px] overflow-y-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase border-b sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-5 py-4">Origem / Documento</th>
-                                        <th className="px-5 py-4">Referência</th>
+                                        <th className="px-5 py-4">Origem / Data Solicitação</th>
+                                        <th className="px-5 py-4">Detalhes</th>
                                         <th className="px-5 py-4 text-right">Crédito (R$)</th>
                                     </tr>
                                 </thead>
@@ -280,10 +280,10 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                         <tr className="bg-primary/5">
                                             <td className="px-5 py-4">
                                                 <div className="text-[11px] font-black text-primary uppercase">Salário Base + Benefícios</div>
-                                                <div className="text-[10px] text-gray-400 font-bold">Folha Mensal</div>
+                                                <div className="text-[10px] text-gray-400 font-bold">Folha Mensal Consolidada</div>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <div className="text-[9px] text-gray-400 uppercase font-black">Contrato Fixo</div>
+                                                <div className="text-[9px] text-gray-400 uppercase font-black">Contrato Corporativo</div>
                                             </td>
                                             <td className="px-5 py-4 text-right">
                                                 <span className="text-primary font-black text-xs">
@@ -302,10 +302,12 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                         <tr key={req.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="px-5 py-4">
                                                 <div className="text-[11px] font-black text-gray-900">Frete Realizado</div>
-                                                <div className="text-[10px] text-gray-400 font-bold">Nota #{req.invoiceNumber}</div>
+                                                <div className="text-[10px] text-gray-400 font-bold">
+                                                  {req.requestDate ? new Date(req.requestDate + 'T' + req.requestTime).toLocaleDateString('pt-BR') : new Date(req.createdAt).toLocaleDateString('pt-BR')} às {req.requestTime || '--:--'}
+                                                </div>
                                             </td>
                                             <td className="px-5 py-4">
-                                                <div className="text-[11px] font-bold text-gray-600 truncate max-w-[150px]" title={req.destination}>{req.destination}</div>
+                                                <div className="text-[11px] font-bold text-gray-600 truncate max-w-[150px]">Doc: {req.invoiceNumber}</div>
                                                 <div className="text-[9px] text-gray-400 uppercase font-black">{req.vehicleType}</div>
                                             </td>
                                             <td className="px-5 py-4 text-right">
@@ -318,24 +320,26 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                     {filteredCommissions.map(req => {
                                         const commValue = (req.clientCharge * (req.commissionPercentage || 0)) / 100;
                                         return (
-                                            <tr key={`comm-${req.id}`} className="hover:bg-orange-50 transition-colors group border-l-4 border-l-orange-400">
+                                            <tr key={`comm-${req.id}`} className="hover:bg-orange-50 transition-colors group border-l-4 border-l-secondary">
                                                 <td className="px-5 py-4">
-                                                    <div className="text-[11px] font-black text-orange-700 uppercase">Comissão de Venda/Agenciamento</div>
-                                                    <div className="text-[10px] text-orange-600/60 font-bold">Nota #{req.invoiceNumber}</div>
+                                                    <div className="text-[11px] font-black text-secondary uppercase">Comissão de Agenciamento</div>
+                                                    <div className="text-[10px] text-secondary/60 font-bold">
+                                                      {req.requestDate ? new Date(req.requestDate).toLocaleDateString('pt-BR') : '--'} • Nota #{req.invoiceNumber}
+                                                    </div>
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     <div className="text-[11px] font-bold text-gray-600 truncate max-w-[150px]">{req.clientName}</div>
-                                                    <div className="text-[9px] text-orange-500 uppercase font-black">Taxa: {req.commissionPercentage}%</div>
+                                                    <div className="text-[9px] text-secondary uppercase font-black">Taxa: {req.commissionPercentage}%</div>
                                                 </td>
                                                 <td className="px-5 py-4 text-right">
-                                                    <span className="text-orange-600 font-black text-xs">+ {commValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    <span className="text-secondary font-black text-xs">+ {commValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </td>
                                             </tr>
                                         );
                                     })}
 
                                     {filteredRequests.length === 0 && filteredCommissions.length === 0 && selectedEntity?.type === 'DRIVER' && (
-                                        <tr><td colSpan={3} className="px-6 py-20 text-center text-gray-400 italic text-xs">Nenhum crédito (frete ou comissão) encontrado neste período.</td></tr>
+                                        <tr><td colSpan={3} className="px-6 py-20 text-center text-gray-400 italic text-xs">Nenhuma receita encontrada para este período.</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -347,7 +351,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                 <div className="lg:col-span-5 space-y-4">
                     <h3 className="text-xs font-black text-gray-700 uppercase tracking-widest px-1 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                        {editingExpenseId ? 'Editar Lançamento' : 'Lançar Débito / Despesa'}
+                        {editingExpenseId ? 'Editar Desconto' : 'Lançar Novo Desconto'}
                     </h3>
                     
                     <Card className={`p-6 bg-gray-50 border-t-4 ${editingExpenseId ? 'border-secondary' : 'border-red-100'}`}>
@@ -360,12 +364,12 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                     className="h-11 border-gray-200"
                                 >
                                     <option value="VALE">Vale Antecipado</option>
-                                    <option value="GASOLINA">Gasolina / Álcool</option>
+                                    <option value="GASOLINA">Gasolina / Combustível</option>
                                     <option value="PEDAGIO">Pedágio</option>
                                     <option value="OUTROS">Outros</option>
                                 </Select>
                                 <Input 
-                                    label="Data" 
+                                    label="Data do Evento" 
                                     type="date" 
                                     value={newExpense.date} 
                                     onChange={e => setNewExpense({...newExpense, date: e.target.value})} 
@@ -374,7 +378,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                 />
                             </div>
                             <Input 
-                                label="Valor (R$)" 
+                                label="Valor do Desconto (R$)" 
                                 type="number" 
                                 step="0.01" 
                                 value={newExpense.amount} 
@@ -384,10 +388,10 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                 className="h-11 border-gray-200 font-black text-red-600"
                             />
                             <Input 
-                                label="Descrição Opcional" 
+                                label="Justificativa / Descrição" 
                                 value={newExpense.description} 
                                 onChange={e => setNewExpense({...newExpense, description: e.target.value})}
-                                placeholder="Ex: Referente a coleta em Jundiaí"
+                                placeholder="Ex: Adiantamento semanal"
                                 className="h-11 border-gray-200"
                             />
                             <div className="flex gap-2">
@@ -397,7 +401,7 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                     </Button>
                                 )}
                                 <Button type="submit" variant={editingExpenseId ? 'secondary' : 'danger'} className="flex-[2] py-3 shadow-lg">
-                                    {editingExpenseId ? <><Icons.Edit /> Atualizar Lançamento</> : <><Icons.Plus /> Confirmar Lançamento</>}
+                                    {editingExpenseId ? <><Icons.Edit /> Atualizar Lançamento</> : <><Icons.Plus /> Efetivar Desconto</>}
                                 </Button>
                             </div>
                         </form>
@@ -411,17 +415,17 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                     <tr>
                                         <th className="px-4 py-3">Tipo / Data</th>
                                         <th className="px-4 py-3 text-right">Valor</th>
-                                        <th className="px-4 py-3 text-right">Ação</th>
+                                        <th className="px-4 py-3 text-right">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {filteredExpenses.length === 0 ? (
-                                        <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400 text-xs italic">Nenhum débito neste período.</td></tr>
+                                        <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400 text-xs italic">Nenhum débito registrado.</td></tr>
                                     ) : (
                                         filteredExpenses.map(exp => (
                                             <tr key={exp.id} className="hover:bg-gray-50 transition-colors group">
                                                 <td className="px-4 py-3">
-                                                    <div className="text-[10px] font-black text-gray-800">{exp.type}</div>
+                                                    <div className="text-[10px] font-black text-gray-800 uppercase">{exp.type}</div>
                                                     <div className="text-[9px] text-gray-400 font-bold">{new Date(exp.date).toLocaleDateString('pt-BR')}</div>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
@@ -429,20 +433,13 @@ export const Payroll: React.FC<PayrollProps> = ({ drivers, requests, expenses, o
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <div className="flex justify-end items-center gap-1">
-                                                        <button 
-                                                            onClick={() => handleEditExpense(exp)}
-                                                            className="text-gray-300 hover:text-secondary p-1 transition-all"
-                                                            title="Editar Lançamento"
-                                                        >
-                                                            <Icons.Edit />
-                                                        </button>
                                                         {exp.status === 'PAGO' ? (
-                                                            <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Pago</span>
+                                                            <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Compensado</span>
                                                         ) : (
                                                             <button 
                                                                 onClick={() => handlePayExpense(exp)}
                                                                 className="text-[8px] font-black uppercase text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 hover:bg-orange-500 hover:text-white transition-all"
-                                                                title="Marcar como Liquidado"
+                                                                title="Liquidar desconto no saldo"
                                                             >
                                                                 Liquidado?
                                                             </button>

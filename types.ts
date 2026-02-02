@@ -27,6 +27,8 @@ export interface TransportRequest {
   clientCharge: number;
   status: RequestStatus;
   createdAt: string; 
+  requestDate: string; // YYYY-MM-DD
+  requestTime: string; // HH:mm
   scheduledFor?: string; 
   driverId?: string;
   activityType?: ActivityType;

@@ -19,6 +19,10 @@ interface NewRequestProps {
 export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients, existingRequests, initialData, currentUser, onSubmit, onCancel }) => {
   const [contracts, setContracts] = useState<FixedContract[]>([]);
   
+  const now = new Date();
+  const defaultDate = now.toISOString().split('T')[0];
+  const defaultTime = now.toTimeString().split(' ')[0].substring(0, 5);
+
   const [formData, setFormData] = useState({
     invoiceNumber: initialData?.invoiceNumber || '',
     clientName: initialData?.clientName || '',
@@ -26,6 +30,8 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     destination: initialData?.destination || '',
     vehicleType: initialData?.vehicleType || ('MOTO' as VehicleType),
     driverId: initialData?.driverId || '',
+    requestDate: initialData?.requestDate || defaultDate,
+    requestTime: initialData?.requestTime || defaultTime,
     scheduledFor: initialData?.scheduledFor || '',
     activityType: initialData?.activityType || ('ENTREGAR' as ActivityType),
     contactOnSite: initialData?.contactOnSite || '',
@@ -44,12 +50,10 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
   const [isEstimating, setIsEstimating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Carregar dados de staff para comissionamento
   useEffect(() => {
     DataManager.fetchFixedData().then(data => setContracts(data.contracts));
   }, []);
 
-  // Lista unificada de possíveis comissionados (Motoristas + Staff)
   const allStaffOptions = useMemo(() => {
     const list: string[] = [];
     drivers.forEach(d => list.push(d.name));
@@ -134,16 +138,57 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
   const isAdmin = currentUser.role === 'ADMIN';
   const commissionValue = (financials.clientCharge * (formData.commissionPercentage / 100)) || 0;
 
+  // Split date for separate selectors as requested (Dia, Mes, Ano)
+  const [year, month, day] = formData.requestDate.split('-');
+
+  const handleDatePartChange = (part: 'day' | 'month' | 'year', value: string) => {
+    let newDay = day;
+    let newMonth = month;
+    let newYear = year;
+
+    if (part === 'day') newDay = value.padStart(2, '0');
+    if (part === 'month') newMonth = value.padStart(2, '0');
+    if (part === 'year') newYear = value;
+
+    setFormData({ ...formData, requestDate: `${newYear}-${newMonth}-${newDay}` });
+  };
+
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto pb-20">
         <div className="flex items-center gap-2 mb-6">
             <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">&larr; Voltar</button>
-            <h2 className="text-2xl font-bold text-gray-800">{initialData ? 'Editar Solicitação' : 'Nova Solicitação de Transporte'}</h2>
+            <h2 className="text-2xl font-black text-gray-800 uppercase tracking-tight">{initialData ? 'Editar Solicitação' : 'Nova Solicitação de Transporte'}</h2>
         </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Detalhes da Carga</h3>
+            <div className="flex items-center gap-2 mb-4 border-b pb-2">
+                <div className="p-1.5 bg-primary/10 rounded text-primary"><Icons.Calendar /></div>
+                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Data e Horário da Solicitação</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Select label="Dia" value={parseInt(day)} onChange={e => handleDatePartChange('day', e.target.value)}>
+                    {Array.from({length: 31}, (_, i) => (
+                        <option key={i+1} value={i+1}>{String(i+1).padStart(2, '0')}</option>
+                    ))}
+                </Select>
+                <Select label="Mês" value={parseInt(month)} onChange={e => handleDatePartChange('month', e.target.value)}>
+                    {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, i) => (
+                        <option key={i+1} value={i+1}>{m}</option>
+                    ))}
+                </Select>
+                <Select label="Ano" value={year} onChange={e => handleDatePartChange('year', e.target.value)}>
+                    {[2024, 2025, 2026].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                    ))}
+                </Select>
+                <Input label="Horário" type="time" value={formData.requestTime} onChange={e => setFormData({...formData, requestTime: e.target.value})} required />
+            </div>
+        </Card>
+
+        <Card className="p-6">
+            <h3 className="text-sm font-black text-gray-800 mb-4 border-b pb-2 uppercase tracking-widest">Detalhes da Carga</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label="Número da Nota Fiscal" value={formData.invoiceNumber} onChange={e => setFormData({...formData, invoiceNumber: e.target.value})} required />
                 {!isClient ? (
@@ -168,7 +213,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
         </Card>
 
         <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Rota</h3>
+            <h3 className="text-sm font-black text-gray-800 mb-4 border-b pb-2 uppercase tracking-widest">Rota e Trajeto</h3>
             <div className="space-y-4">
                 <Input label="Origem" value={formData.origin} onChange={e => setFormData({...formData, origin: e.target.value})} required />
                 {waypoints.map((point, index) => (
@@ -181,62 +226,67 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                         <button type="button" onClick={() => setWaypoints(waypoints.filter((_, i) => i !== index))} className="bg-red-50 text-red-500 p-2.5 rounded-md mb-1"><Icons.Trash /></button>
                     </div>
                 ))}
-                <button type="button" onClick={() => setWaypoints([...waypoints, ''])} className="text-sm text-primary font-medium">+ Adicionar Parada Extra</button>
+                <button type="button" onClick={() => setWaypoints([...waypoints, ''])} className="text-xs text-primary font-black uppercase tracking-widest">+ Adicionar Parada Extra</button>
                 <Input label="Destino Final" value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} required />
-                <div className="flex justify-end gap-4 items-end">
+                <div className="flex justify-end gap-4 items-end pt-2">
                     {!isClient && <div className="w-32"><Input label="KM Total" type="number" value={distanceKm} onChange={e => setDistanceKm(parseFloat(e.target.value) || 0)} /></div>}
-                    <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating}><Icons.Wand /> Calcular Rota (IA)</Button>
+                    <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating} className="h-10 text-xs"><Icons.Wand /> Calcular Rota (IA)</Button>
                 </div>
             </div>
         </Card>
 
         {!isClient && (
-            <Card className="p-6 bg-blue-50 border-blue-100">
-                <h3 className="text-lg font-semibold text-blue-900 mb-4 border-b border-blue-200 pb-2">Veículo e Valores</h3>
+            <Card className="p-6 bg-primary/5 border-primary/10">
+                <div className="flex items-center gap-2 mb-4 border-b border-primary/10 pb-2">
+                    <div className="p-1.5 bg-primary text-white rounded"><Icons.DollarSign /></div>
+                    <h3 className="text-sm font-black text-primary uppercase tracking-widest">Logística de Valores</h3>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-2">
                             {rates.map(rate => (
-                                <button type="button" key={rate.type} onClick={() => setFormData({...formData, vehicleType: rate.type})} className={`px-3 py-2 text-xs rounded-md border ${formData.vehicleType === rate.type ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600'}`}>{rate.label}</button>
+                                <button type="button" key={rate.type} onClick={() => setFormData({...formData, vehicleType: rate.type})} className={`px-3 py-2 text-[10px] font-black uppercase rounded-md border transition-all ${formData.vehicleType === rate.type ? 'bg-primary text-white border-primary shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>{rate.label}</button>
                             ))}
                         </div>
-                        <Select label="Motorista" value={formData.driverId} onChange={e => setFormData({...formData, driverId: e.target.value})}>
+                        <Select label="Motorista Escalado" value={formData.driverId} onChange={e => setFormData({...formData, driverId: e.target.value})}>
                             <option value="">Selecione...</option>
                             {drivers.filter(d => d.vehicleType === formData.vehicleType).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </Select>
                     </div>
-                    <div className="bg-white p-4 rounded-md border border-gray-200 space-y-3">
-                        <Input label="Valor Motorista (R$)" type="number" value={financials.driverFee} onChange={e => setFinancials({...financials, driverFee: parseFloat(e.target.value) || 0})} />
-                        <Input label="Valor Cliente (R$)" type="number" value={financials.clientCharge} onChange={e => setFinancials({...financials, clientCharge: parseFloat(e.target.value) || 0})} />
+                    <div className="bg-white p-4 rounded-xl border border-primary/10 space-y-3 shadow-inner">
+                        <Input label="Valor Repasse Motorista (R$)" type="number" value={financials.driverFee} onChange={e => setFinancials({...financials, driverFee: parseFloat(e.target.value) || 0})} className="font-bold text-gray-800" />
+                        <Input label="Valor Cobrança Cliente (R$)" type="number" value={financials.clientCharge} onChange={e => setFinancials({...financials, clientCharge: parseFloat(e.target.value) || 0})} className="font-black text-primary" />
                     </div>
                 </div>
 
                 {isAdmin && (
-                    <div className="mt-6 pt-4 border-t border-blue-200">
-                         <h4 className="text-xs font-black text-blue-900 mb-3 uppercase tracking-widest">Comissionamento de Venda</h4>
+                    <div className="mt-6 pt-4 border-t border-primary/10">
+                         <h4 className="text-[10px] font-black text-secondary mb-4 uppercase tracking-[0.2em]">Bonificação e Comissionamento</h4>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <Select 
-                                label="Comissionado"
+                                label="Funcionario Beneficiário"
                                 value={formData.commissionedName}
                                 onChange={e => setFormData({...formData, commissionedName: e.target.value})}
                             >
                                 <option value="">Nenhum</option>
                                 {allStaffOptions.map(name => <option key={name} value={name}>{name}</option>)}
                             </Select>
-                            <Input label="Porcentagem (%)" type="number" value={formData.commissionPercentage} onChange={e => setFormData({...formData, commissionPercentage: parseFloat(e.target.value) || 0})} />
-                            <div className="bg-white border border-gray-200 rounded p-2 px-3 mb-[2px]">
-                                <span className="text-[10px] text-gray-400 block uppercase font-black">Valor Comissão</span>
-                                <span className="text-primary font-black">R$ {commissionValue.toFixed(2)}</span>
+                            <Input label="Margem de Comissão (%)" type="number" value={formData.commissionPercentage} onChange={e => setFormData({...formData, commissionPercentage: parseFloat(e.target.value) || 0})} />
+                            <div className="bg-white border border-secondary/20 rounded-xl p-2.5 px-4 mb-[2px] shadow-sm">
+                                <span className="text-[9px] text-gray-400 block uppercase font-black tracking-widest">Crédito Previsto</span>
+                                <span className="text-secondary font-black text-lg">R$ {commissionValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                             </div>
                          </div>
+                         <p className="text-[9px] text-gray-400 font-bold mt-2 italic">* Este valor será lançado como receita no extrato do funcionário após a conclusão do frete.</p>
                     </div>
                 )}
             </Card>
         )}
 
-        <div className="flex justify-end gap-3 pt-4 pb-12">
-            <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
-            <Button type="submit">{initialData ? 'Salvar Alterações' : 'Cadastrar Solicitação'}</Button>
+        <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={onCancel} className="px-8">Cancelar</Button>
+            <Button type="submit" className="px-12 shadow-xl">{initialData ? 'Atualizar Dados' : 'Efetivar Solicitação'}</Button>
         </div>
       </form>
     </div>
