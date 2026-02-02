@@ -12,6 +12,90 @@ interface DashboardProps {
   onDeleteRequest: (id: string) => void;
 }
 
+// Sub-componente para o Mapa Interativo Simulado
+const InteractiveMockMap: React.FC<{ drivers: Driver[] }> = ({ drivers }) => {
+  // Gerar coordenadas fixas "aleatórias" para cada motorista baseada no ID para consistência
+  const driverMarkers = useMemo(() => {
+    return drivers.map((d, index) => {
+      // Usar o ID ou index para criar uma posição "única" no grid 100x100
+      const seed = d.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const x = 15 + (seed % 70); // Manter entre 15% e 85%
+      const y = 15 + ((seed * 13) % 70);
+      
+      return { ...d, x, y };
+    });
+  }, [drivers]);
+
+  const [hoveredDriver, setHoveredDriver] = useState<string | null>(null);
+
+  return (
+    <div className="absolute inset-0 bg-[#f8fafc] overflow-hidden">
+      {/* Grid Pattern Background */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#412a9c 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
+      
+      {/* Linhas de Mapa Estilizadas (SVG) */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.05]" preserveAspectRatio="none">
+        <path d="M0,100 Q250,50 500,100 T1000,100" fill="none" stroke="#412a9c" strokeWidth="20" />
+        <path d="M100,0 Q150,250 100,500 T100,1000" fill="none" stroke="#412a9c" strokeWidth="20" />
+        <path d="M0,400 L1000,600" fill="none" stroke="#412a9c" strokeWidth="15" />
+        <circle cx="500" cy="500" r="300" fill="none" stroke="#412a9c" strokeWidth="2" strokeDasharray="10,10" />
+      </svg>
+
+      {/* Radar Sweep Animation */}
+      <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.03]">
+        <div className="w-full h-full bg-gradient-to-tr from-primary/40 to-transparent rounded-full animate-[spin_8s_linear_infinite]"></div>
+      </div>
+
+      {/* Marcadores dos Motoristas */}
+      {driverMarkers.map((d) => (
+        <div 
+          key={d.id}
+          className="absolute transition-all duration-700 ease-in-out z-20 group"
+          style={{ left: `${d.x}%`, top: `${d.y}%`, transform: 'translate(-50%, -50%)' }}
+          onMouseEnter={() => setHoveredDriver(d.id)}
+          onMouseLeave={() => setHoveredDriver(null)}
+        >
+          {/* Pulsing Effect for active routes */}
+          {d.status === 'EM_ROTA' && (
+            <div className="absolute inset-0 -m-4">
+              <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-20"></span>
+            </div>
+          )}
+
+          {/* Marker Point */}
+          <div className={`relative w-6 h-6 rounded-full shadow-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
+            d.status === 'EM_ROTA' ? 'bg-blue-600 border-white scale-110' : 
+            d.status === 'DISPONIVEL' ? 'bg-emerald-500 border-white' : 'bg-gray-400 border-white'
+          } group-hover:scale-125 z-10`}>
+            <span className="text-[10px] filter invert brightness-0">
+              {d.vehicleType === 'MOTO' ? '🏍️' : d.vehicleType === 'CAMINHAO' ? '🚚' : '🚗'}
+            </span>
+          </div>
+
+          {/* Tooltip / Label */}
+          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white rounded text-[9px] font-black uppercase whitespace-nowrap shadow-xl transition-all ${
+            hoveredDriver === d.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
+          }`}>
+            {d.name} • {d.lastRegion || 'Base'}
+          </div>
+        </div>
+      ))}
+
+      {/* Mapa Legend */}
+      <div className="absolute bottom-6 right-6 flex flex-col gap-2 bg-white/80 backdrop-blur-md p-3 rounded-xl border border-white shadow-sm z-30">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+          <span className="text-[8px] font-black text-gray-500 uppercase">Disponível</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+          <span className="text-[8px] font-black text-gray-500 uppercase">Em Entrega</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, currentUser, onNewRequest }) => {
   const [now, setNow] = useState(new Date());
 
@@ -66,11 +150,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
       {/* Row 1: Real-Time Map Area */}
       <div className="grid grid-cols-1 gap-6">
         <Card className="relative h-[550px] overflow-hidden bg-slate-200 border-none shadow-2xl group rounded-2xl">
-            {/* Mock Map Background - Always Visible */}
-            <div className="absolute inset-0 opacity-60 grayscale-[0.5] contrast-[1.1] pointer-events-none bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-46.6333,-23.5505,12,0/1200x600?access_token=pk.eyJ1IjoiZGV2ZWxvcGVyIiwiYSI6ImNrMWR4ZzRndzA0bmIzYm52eWxsbmx6bmwifQ==')] bg-cover bg-center transition-all duration-1000 group-hover:scale-105"></div>
-            
+            {/* Componente de Mapa Interativo Simulado */}
+            <InteractiveMockMap drivers={drivers} />
+
             {/* Overlay Gradient for Readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none"></div>
 
             {/* Live Indicator Overlay */}
             <div className="absolute top-6 left-6 z-30 flex items-center gap-3 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-xl border border-white/50">
@@ -86,8 +170,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ requests, drivers, current
 
             {/* Empty State Overlay - Floating in the center of the map */}
             {activeDeliveries.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white/40 max-w-sm text-center animate-in zoom-in duration-500">
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                    <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white/40 max-w-sm text-center animate-in zoom-in duration-500 pointer-events-auto">
                         <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
                             <Icons.Truck />
                         </div>

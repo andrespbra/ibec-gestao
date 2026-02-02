@@ -191,11 +191,11 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 border-l-4 border-l-primary bg-white shadow-sm">
           <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Receita Bruta Mensal</span>
-          <span className="text-2xl font-black text-gray-900 block mt-1">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          <span className="text-2xl font-black text-gray-900 block mt-1">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </Card>
         <Card className="p-5 border-l-4 border-l-red-500 bg-white shadow-sm">
           <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Custo de Pessoal unificado</span>
-          <span className="text-2xl font-black text-red-600 block mt-1">R$ {totalStaffCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          <span className="text-2xl font-black text-red-600 block mt-1">R$ {totalStaffCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </Card>
         <Card className={`p-5 border-l-4 shadow-sm ${globalMargin >= 0 ? 'border-l-emerald-500 bg-emerald-50/30' : 'border-l-red-600 bg-red-50/30'}`}>
           <div className="flex justify-between items-start">
@@ -203,7 +203,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
             <span className="text-[9px] font-bold text-gray-400 bg-white/60 px-2 py-0.5 rounded border border-gray-100">-8% ISS/NF</span>
           </div>
           <span className={`text-2xl font-black block mt-1 ${globalMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-            R$ {globalMargin.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {globalMargin.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </Card>
       </div>
@@ -272,10 +272,10 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                                 <div className="font-black text-gray-800 uppercase">{s.employeeName}</div>
                                 <div className="text-[9px] text-gray-400 font-bold">{s.department || 'Operação'}</div>
                               </td>
-                              <td className="px-4 py-3 font-bold text-gray-600">R$ {s.salary.toLocaleString('pt-BR')}</td>
-                              <td className="px-4 py-3">R$ {((s.vr || 0) + (s.vt || 0)).toLocaleString('pt-BR')}</td>
-                              <td className="px-4 py-3 text-gray-400">R$ {((s.periculosidade || 0) + (s.motoAluguel || 0) + (s.fgts || 0) + (s.inss || 0)).toLocaleString('pt-BR')}</td>
-                              <td className="px-4 py-3 font-black text-red-500 bg-red-50/30">R$ {subTotal.toLocaleString('pt-BR')}</td>
+                              <td className="px-4 py-3 font-bold text-gray-600">R$ {s.salary.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3">R$ {((s.vr || 0) + (s.vt || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3 text-gray-400">R$ {((s.periculosidade || 0) + (s.motoAluguel || 0) + (s.fgts || 0) + (s.inss || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3 font-black text-red-500 bg-red-50/30">R$ {subTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-4 py-3 text-right">
                                 <button type="button" onClick={() => setInitialStaff(initialStaff.filter((_, i) => i !== idx))} className="text-gray-300 hover:text-red-500 p-2 transition-colors">
                                   <Icons.Trash />
@@ -322,7 +322,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                             <div>
                                 <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase group-hover:text-primary transition-colors">{contract.clientName}</h3>
                                 <div className="flex items-center gap-4 text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                                    <span>FATURAMENTO: <b className="text-gray-900">R$ {contract.contractValue.toLocaleString('pt-BR')}</b></span>
+                                    <span>FATURAMENTO: <b className="text-gray-900">R$ {contract.contractValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></span>
                                     <span>VENCIMENTO: <b className="text-gray-900">DIA {contract.invoiceDay}</b></span>
                                 </div>
                             </div>
@@ -331,7 +331,7 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                             <div className="flex flex-col items-end">
                                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Resultado Líquido</span>
                                 <span className={`text-2xl font-black tabular-nums ${contractNet >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                    R$ {contractNet.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    R$ {contractNet.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2 border-l border-gray-100 pl-6">
@@ -413,10 +413,10 @@ export const FixedContracts: React.FC<FixedContractsProps> = ({
                                                         <div className="font-black text-gray-800 uppercase tracking-tighter">{member.employeeName}</div>
                                                         <div className="text-[8px] font-bold text-gray-400 uppercase">{member.department || 'Pessoal'}</div>
                                                     </td>
-                                                    <td className="px-5 py-4 font-bold text-gray-600">R$ {member.salary.toLocaleString('pt-BR')}</td>
-                                                    <td className="px-5 py-4">R$ {((member.vr || 0) + (member.vt || 0)).toLocaleString('pt-BR')}</td>
-                                                    <td className="px-5 py-4 text-gray-400">R$ {((member.periculosidade || 0) + (member.motoAluguel || 0) + (member.fgts || 0) + (member.inss || 0)).toLocaleString('pt-BR')}</td>
-                                                    <td className="px-5 py-4 font-black text-red-600 bg-red-50/20">R$ {subTotal.toLocaleString('pt-BR')}</td>
+                                                    <td className="px-5 py-4 font-bold text-gray-600">R$ {member.salary.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                    <td className="px-5 py-4">R$ {((member.vr || 0) + (member.vt || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                    <td className="px-5 py-4 text-gray-400">R$ {((member.periculosidade || 0) + (member.motoAluguel || 0) + (member.fgts || 0) + (member.inss || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                    <td className="px-5 py-4 font-black text-red-600 bg-red-50/20">R$ {subTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                     <td className="px-5 py-4 text-right">
                                                         <button onClick={() => removeStaff(contract.id, member.id)} className="text-gray-200 hover:text-red-400 p-2 transition-colors">
                                                             <Icons.Trash />

@@ -103,12 +103,12 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
               <Card className="p-5 border-l-4 border-l-primary bg-white shadow-sm overflow-hidden relative">
                  <div className="absolute -right-4 -top-4 opacity-5 text-primary"><Icons.DollarSign /></div>
                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Receita Total</span>
-                 <span className="text-2xl font-black text-gray-800 mt-2 block">R$ {stats.totalRevenue.toLocaleString('pt-BR')}</span>
+                 <span className="text-2xl font-black text-gray-800 mt-2 block">R$ {stats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                  <span className="text-[10px] text-green-500 font-bold flex items-center gap-1 mt-1"><Icons.TrendingUp /> +{viewPeriod === 'WEEKLY' ? '4.2%' : '12.8%'}</span>
               </Card>
               <Card className="p-5 border-l-4 border-l-red-500 bg-white shadow-sm">
                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Despesas Operacionais</span>
-                 <span className="text-2xl font-black text-gray-800 mt-2 block">R$ {stats.totalExpenses.toLocaleString('pt-BR')}</span>
+                 <span className="text-2xl font-black text-gray-800 mt-2 block">R$ {stats.totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </Card>
               <Card className="p-5 border-l-4 border-l-emerald-500 bg-white shadow-sm">
                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Margem de Lucro</span>
@@ -116,7 +116,7 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
               </Card>
               <Card className="p-5 border-l-4 border-l-orange-500 bg-white shadow-sm">
                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Fluxo de Caixa</span>
-                 <span className="text-2xl font-black text-gray-800 mt-2 block">R$ {stats.netCashFlow.toLocaleString('pt-BR')}</span>
+                 <span className="text-2xl font-black text-gray-800 mt-2 block">R$ {stats.netCashFlow.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </Card>
            </div>
 
@@ -169,11 +169,11 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
                     <div className="flex gap-4 pt-4">
                        <div className="bg-white/10 p-4 rounded-xl flex-1 backdrop-blur-sm border border-white/10">
                           <span className="text-[10px] font-bold block opacity-60">SALDO ATUAL</span>
-                          <span className="text-xl font-black">R$ {stats.netCashFlow.toLocaleString('pt-BR')}</span>
+                          <span className="text-xl font-black">R$ {stats.netCashFlow.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                        </div>
                        <div className="bg-white/10 p-4 rounded-xl flex-1 backdrop-blur-sm border border-white/20">
                           <span className="text-[10px] font-bold block opacity-60 uppercase">Projeção (6 Meses)</span>
-                          <span className="text-xl font-black text-secondary">R$ {stats.projected6Months.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
+                          <span className="text-xl font-black text-secondary">R$ {stats.projected6Months.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                        </div>
                     </div>
                  </div>
@@ -197,11 +197,11 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="p-4 border-l-4 border-l-primary">
                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Total Líquido Folha</span>
-                 <span className="text-xl font-black mt-1 block">R$ {stats.staffCosts.toLocaleString('pt-BR')}</span>
+                 <span className="text-xl font-black mt-1 block">R$ {stats.staffCosts.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </Card>
               <Card className="p-4 border-l-4 border-l-orange-500">
                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Total Encargos</span>
-                 <span className="text-xl font-black mt-1 block">R$ {(stats.staffCosts * 0.285).toLocaleString('pt-BR')}</span>
+                 <span className="text-xl font-black mt-1 block">R$ {(stats.staffCosts * 0.285).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </Card>
               <Card className="p-4 border-l-4 border-l-emerald-500">
                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Colaboradores Ativos</span>
@@ -237,10 +237,10 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
                              return (
                                 <tr key={staff.id} className="hover:bg-gray-50/80 transition-colors group">
                                    <td className="px-6 py-4 font-bold text-gray-900">{staff.employeeName}</td>
-                                   <td className="px-6 py-4 font-medium">R$ {staff.salary.toLocaleString('pt-BR')}</td>
-                                   <td className="px-6 py-4 text-emerald-600 font-bold">+ R$ {(staff.bonus || 0).toLocaleString('pt-BR')}</td>
-                                   <td className="px-6 py-4 text-red-500">R$ {inss.toLocaleString('pt-BR')}</td>
-                                   <td className="px-6 py-4 font-black">R$ {net.toLocaleString('pt-BR')}</td>
+                                   <td className="px-6 py-4 font-medium">R$ {staff.salary.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                   <td className="px-6 py-4 text-emerald-600 font-bold">+ R$ {(staff.bonus || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                   <td className="px-6 py-4 text-red-500">R$ {inss.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                   <td className="px-6 py-4 font-black">R$ {net.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                    <td className="px-6 py-4">
                                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${staff.paymentStatus === 'PAGO' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>
                                          {staff.paymentStatus || 'PENDENTE'}
@@ -314,7 +314,7 @@ export const Finance: React.FC<FinanceProps> = ({ requests, drivers, contracts, 
                                    {inv.status === 'VENCIDO' && <span className="ml-2 bg-red-100 text-red-700 px-1 rounded text-[8px] uppercase">Atrasada</span>}
                                 </div>
                              </td>
-                             <td className="px-6 py-4 font-black">R$ {inv.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                             <td className="px-6 py-4 font-black">R$ {inv.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                              <td className="px-6 py-4">
                                 <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${
                                    inv.status === 'PAGO' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :

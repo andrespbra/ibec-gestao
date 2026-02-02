@@ -10,10 +10,37 @@ interface ReportsProps {
   clients: Client[];
   onEditRequest: (request: TransportRequest) => void;
   onDeleteRequest: (id: string) => void;
+  onStatusUpdate: (id: string, status: RequestStatus) => void;
   onPaymentUpdate: (id: string, date: string | undefined) => void;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditRequest, onDeleteRequest, onPaymentUpdate }) => {
+// Subcomponente para selecionar Status de forma interativa na tabela
+const InteractiveStatusSelect: React.FC<{ status: RequestStatus, onChange: (val: RequestStatus) => void }> = ({ status, onChange }) => {
+  const styles = {
+    PENDENTE: "bg-orange-50 text-orange-700 border-orange-100",
+    EM_ANDAMENTO: "bg-blue-50 text-blue-700 border-blue-100",
+    CONCLUIDO: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  };
+
+  return (
+    <div className="relative inline-block group">
+      <select
+        value={status}
+        onChange={(e) => onChange(e.target.value as RequestStatus)}
+        className={`appearance-none cursor-pointer px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border outline-none transition-all shadow-sm ${styles[status]} hover:brightness-95`}
+      >
+        <option value="PENDENTE">Aguardando</option>
+        <option value="EM_ANDAMENTO">Em Rota</option>
+        <option value="CONCLUIDO">Finalizado</option>
+      </select>
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100">
+        <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+  );
+};
+
+export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditRequest, onDeleteRequest, onStatusUpdate, onPaymentUpdate }) => {
   // Initialize with Current Month
   const [startDate, setStartDate] = useState(() => {
     const now = new Date();
@@ -98,21 +125,21 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text(`R$ ${totalRevenue.toFixed(2)}`, 20, 56);
-    doc.text(`R$ ${totalCost.toFixed(2)}`, 80, 56);
-    doc.text(`R$ ${totalProfit.toFixed(2)}`, 140, 56);
+    doc.text(`R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, 56);
+    doc.text(`R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 80, 56);
+    doc.text(`R$ ${totalProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 140, 56);
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.setFont("helvetica", "normal");
-    doc.text(`Recebido: R$ ${totalReceived.toFixed(2)}`, 20, 68);
-    doc.text(`A Receber: R$ ${totalReceivable.toFixed(2)}`, 80, 68);
+    doc.text(`Recebido: R$ ${totalReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, 68);
+    doc.text(`A Receber: R$ ${totalReceivable.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 80, 68);
     const tableColumn = ["Data Serviço", "Cliente", "Nota Fiscal", "Status", "Receita", "Pgto"];
     const tableRows = filteredData.map(req => [
         getServiceDate(req).toLocaleDateString('pt-BR'),
         req.clientName,
         req.invoiceNumber,
         req.status,
-        `R$ ${req.clientCharge.toFixed(2)}`,
+        `R$ ${req.clientCharge.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         req.paymentDate ? new Date(req.paymentDate).toLocaleDateString('pt-BR') : 'Pendente'
     ]);
     autoTable(doc, {
@@ -128,7 +155,7 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
   };
 
   const handleDelete = (id: string, invoice: string) => {
-    if (window.confirm(`Tem certeza que deseja remover a solicitação Nota Fiscal: ${invoice}?`)) {
+    if (window.confirm(`ATENÇÃO: Você está prestes a remover permanentemente a solicitação Nota Fiscal: ${invoice}.\n\nDeseja continuar com a exclusão no banco de dados?`)) {
       onDeleteRequest(id);
     }
   };
@@ -150,22 +177,22 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
         <div className="lg:col-span-1 space-y-4">
           <Card className="p-5 border-l-4 border-l-primary hover:translate-x-1 transition-transform cursor-default">
             <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Receita Total</span>
-            <span className="text-2xl font-black text-gray-900 block mt-1">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-2xl font-black text-gray-900 block mt-1">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </Card>
           <Card className="p-5 border-l-4 border-l-emerald-500 bg-emerald-50/30 hover:translate-x-1 transition-transform cursor-default">
             <span className="text-emerald-700 text-[10px] font-black uppercase tracking-widest">Valor Recebido</span>
-            <span className="text-2xl font-black text-emerald-800 block mt-1">R$ {totalReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-2xl font-black text-emerald-800 block mt-1">R$ {totalReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </Card>
           <Card className="p-5 border-l-4 border-l-orange-400 bg-orange-50/30 hover:translate-x-1 transition-transform cursor-default">
             <span className="text-orange-700 text-[10px] font-black uppercase tracking-widest">A Receber</span>
-            <span className="text-2xl font-black text-orange-800 block mt-1">R$ {totalReceivable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-2xl font-black text-orange-800 block mt-1">R$ {totalReceivable.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </Card>
           <Card className="p-5 border-l-4 border-l-indigo-600 bg-indigo-50/30 hover:translate-x-1 transition-transform cursor-default">
             <div className="flex justify-between items-start">
               <span className="text-indigo-700 text-[10px] font-black uppercase tracking-widest">Lucro Líquido</span>
               <span className="text-[9px] font-black text-indigo-600 bg-white/60 px-1.5 py-0.5 rounded border border-indigo-100 shadow-sm">-8% NF</span>
             </div>
-            <span className="text-2xl font-black text-indigo-900 block mt-1">R$ {totalProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-2xl font-black text-indigo-900 block mt-1">R$ {totalProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </Card>
         </div>
 
@@ -379,16 +406,19 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                                     <VehicleBadge type={req.vehicleType} />
                                 </td>
                                 <td className="px-6 py-4">
-                                    <StatusBadge status={req.status} />
+                                    <InteractiveStatusSelect 
+                                      status={req.status} 
+                                      onChange={(newStatus) => onStatusUpdate(req.id, newStatus)} 
+                                    />
                                 </td>
                                 <td className="px-6 py-4 text-right text-red-500/70 font-bold text-[11px]">
-                                    -R$ {req.driverFee.toFixed(2)}
+                                    -R$ {req.driverFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-6 py-4 text-right text-primary font-black text-xs">
-                                    +R$ {req.clientCharge.toFixed(2)}
+                                    +R$ {req.clientCharge.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className={`px-6 py-4 text-right font-black text-xs ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                    R$ {profit.toFixed(2)}
+                                    R$ {profit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                     {req.paymentDate ? (
@@ -418,20 +448,21 @@ export const Reports: React.FC<ReportsProps> = ({ requests, clients, onEditReque
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <div className="flex justify-end items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div className="flex justify-end items-center gap-2">
                                          <button 
                                           onClick={() => onEditRequest(req)}
-                                          className="text-gray-300 hover:text-primary transition-colors p-2 rounded-full hover:bg-primary/5"
+                                          className="text-gray-400 hover:text-primary transition-colors p-2 rounded-lg hover:bg-gray-100"
                                           title="Editar Lançamento"
                                         >
                                           <Icons.Edit />
                                         </button>
                                         <button 
                                             onClick={() => handleDelete(req.id, req.invoiceNumber)}
-                                            className="text-gray-300 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
+                                            className="flex items-center gap-1 text-red-400 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50 text-[10px] font-black uppercase"
                                             title="Excluir Registro"
                                         >
                                             <Icons.Trash />
+                                            <span className="hidden sm:inline">Excluir</span>
                                         </button>
                                     </div>
                                 </td>

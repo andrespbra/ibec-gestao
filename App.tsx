@@ -237,7 +237,7 @@ const App: React.FC = () => {
               await DataManager.deleteRequest(id);
               await refreshAllData();
               setIsLoading(false);
-            }} onPaymentUpdate={async (id, d) => {
+            }} onStatusUpdate={handleStatusUpdate} onPaymentUpdate={async (id, d) => {
               const req = requests.find(r => r.id === id);
               if (req) {
                 await DataManager.updateRequest({ ...req, paymentDate: d });
