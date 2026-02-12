@@ -42,6 +42,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
 
   const [waypoints, setWaypoints] = useState<string[]>(initialData?.waypoints || []);
   const [distanceKm, setDistanceKm] = useState<number>(initialData?.distanceKm || 0);
+  const [durationMins, setDurationMins] = useState<number>(0);
   const [financials, setFinancials] = useState({ 
     driverFee: initialData?.driverFee || 0, 
     clientCharge: initialData?.clientCharge || 0 
@@ -118,6 +119,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
       const result = await estimateRoute(formData.origin, formData.destination, activeWaypoints);
       if (result.distanceKm > 0) {
         setDistanceKm(result.distanceKm);
+        setDurationMins(result.durationMins);
         setShowMap(true);
       } else {
         setError("Não foi possível calcular a rota. Verifique os endereços.");
@@ -158,22 +160,23 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     setFormData({ ...formData, requestDate: `${newYear}-${newMonth}-${newDay}` });
   };
 
-  // Google Maps URL construction
-  const mapUrl = useMemo(() => {
-    if (!showMap || !formData.origin || !formData.destination) return "";
-    const wp = waypoints.filter(w => w.trim() !== '').join('|');
-    const query = `${encodeURIComponent(formData.origin)}/to:${wp ? encodeURIComponent(wp) + '/to:' : ''}${encodeURIComponent(formData.destination)}`;
-    return `https://www.google.com/maps/embed/v1/directions?key=YOUR_API_KEY&origin=${encodeURIComponent(formData.origin)}&destination=${encodeURIComponent(formData.destination)}&waypoints=${encodeURIComponent(waypoints.filter(w => w.trim() !== '').join('|'))}`;
-    // Fallback simple search embed if key is missing or for standard mockup
-  }, [showMap, formData.origin, formData.destination, waypoints]);
-
-  // Public search embed fallback (doesn't strictly require key for basic view)
-  const publicMapUrl = useMemo(() => {
-     if (!showMap) return "";
-     const path = [formData.origin, ...waypoints.filter(w => w.trim() !== ''), formData.destination]
-        .map(p => encodeURIComponent(p))
-        .join('/');
-     return `https://www.google.com/maps?q=${encodeURIComponent(formData.origin)}+to+${encodeURIComponent(formData.destination)}&output=embed`;
+  // Improved Embed URL with Waypoints Support for directions view
+  const mapEmbedUrl = useMemo(() => {
+     if (!showMap || !formData.origin || !formData.destination) return "";
+     
+     const origin = encodeURIComponent(formData.origin);
+     const destination = encodeURIComponent(formData.destination);
+     const activeWaypoints = waypoints.filter(w => w.trim() !== '');
+     
+     // Formatar para o esquema saddr (origem) e daddr (destino + paradas)
+     let daddr = destination;
+     if (activeWaypoints.length > 0) {
+        // A sintaxe daddr={destino}+to:{parada1}+to:{parada2} força o trajeto
+        const stops = activeWaypoints.map(w => `to:${encodeURIComponent(w)}`).join('+');
+        daddr = `${stops}+to:${destination}`;
+     }
+     
+     return `https://maps.google.com/maps?saddr=${origin}&daddr=${daddr}&output=embed&t=m&z=12`;
   }, [showMap, formData.origin, formData.destination, waypoints]);
 
   return (
@@ -238,47 +241,68 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
         <Card className="p-6">
             <h3 className="text-sm font-black text-gray-800 mb-4 border-b pb-2 uppercase tracking-widest">Rota e Trajeto</h3>
             <div className="space-y-4">
-                <Input label="Origem" value={formData.origin} onChange={e => setFormData({...formData, origin: e.target.value})} required />
+                <Input label="Origem (Local de Início)" value={formData.origin} onChange={e => setFormData({...formData, origin: e.target.value})} required />
                 {waypoints.map((point, index) => (
                     <div key={index} className="flex gap-2 items-end animate-in slide-in-from-left duration-200">
-                        <div className="flex-1"><Input label={`Parada ${index + 1}`} value={point} onChange={e => {
-                          const newWaypoints = [...waypoints];
-                          newWaypoints[index] = e.target.value;
-                          setWaypoints(newWaypoints);
-                        }} /></div>
+                        <div className="flex-1">
+                          <Input label={`Ponto de Parada ${index + 1}`} value={point} onChange={e => {
+                            const newWaypoints = [...waypoints];
+                            newWaypoints[index] = e.target.value;
+                            setWaypoints(newWaypoints);
+                          }} />
+                        </div>
                         <button type="button" onClick={() => setWaypoints(waypoints.filter((_, i) => i !== index))} className="bg-red-50 text-red-500 p-2.5 rounded-md mb-1 hover:bg-red-100 transition-colors"><Icons.Trash /></button>
                     </div>
                 ))}
-                <button type="button" onClick={() => setWaypoints([...waypoints, ''])} className="text-xs text-primary font-black uppercase tracking-widest hover:text-secondary transition-colors">+ Adicionar Parada Extra</button>
+                <div className="flex justify-between items-center">
+                  <button type="button" onClick={() => setWaypoints([...waypoints, ''])} className="text-xs text-primary font-black uppercase tracking-widest hover:text-secondary transition-colors">+ Adicionar Parada Extra</button>
+                </div>
                 <Input label="Destino Final" value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} required />
                 
                 {error && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100">{error}</div>}
 
                 <div className="flex justify-end gap-4 items-end pt-2">
                     {!isClient && <div className="w-32"><Input label="KM Total" type="number" value={distanceKm} onChange={e => setDistanceKm(parseFloat(e.target.value) || 0)} /></div>}
-                    <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating} className="h-10 text-xs shadow-md"><Icons.Wand /> Calcular Rota (IA)</Button>
+                    <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating} className="h-10 text-xs shadow-md">
+                      <Icons.Wand /> Calcular Rota e Traçar Rota
+                    </Button>
                 </div>
             </div>
         </Card>
 
         {showMap && (
-          <Card className="p-0 overflow-hidden border-2 border-primary/20 animate-in zoom-in duration-300">
+          <Card className="p-0 overflow-hidden border-2 border-primary/20 animate-in zoom-in duration-300 shadow-2xl">
               <div className="p-4 bg-primary/5 border-b flex justify-between items-center">
-                  <h4 className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                      <Icons.MapPin /> Prévia do Itinerário Gerada
-                  </h4>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">{distanceKm} KM estimados</span>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                        <Icons.MapPin /> Itinerário Calculado via IA
+                    </h4>
+                    <p className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Mapa interativo com roteirização</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[8px] font-black text-gray-400 uppercase">Distância</span>
+                      <span className="text-xs font-black text-primary">{distanceKm} KM</span>
+                    </div>
+                    <div className="flex flex-col items-end border-l border-gray-200 pl-3">
+                      <span className="text-[8px] font-black text-gray-400 uppercase">Tempo Est.</span>
+                      <span className="text-xs font-black text-secondary">{durationMins} MIN</span>
+                    </div>
+                  </div>
               </div>
-              <div className="aspect-video w-full bg-gray-100">
+              <div className="aspect-[16/9] w-full bg-gray-100">
                   <iframe 
                     width="100%" 
                     height="100%" 
                     frameBorder="0" 
                     style={{ border: 0 }} 
-                    src={publicMapUrl} 
+                    src={mapEmbedUrl} 
                     allowFullScreen
-                    title="Mapa da Rota"
+                    title="Visualização da Rota"
                   ></iframe>
+              </div>
+              <div className="p-3 bg-gray-50 text-center">
+                <p className="text-[9px] text-gray-400 font-medium italic">As rotas são baseadas em estimativas rodoviárias padrão.</p>
               </div>
           </Card>
         )}
