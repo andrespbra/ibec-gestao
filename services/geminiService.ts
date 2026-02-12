@@ -16,13 +16,19 @@ export interface RouteEstimate {
 export const estimateRoute = async (origin: string, destination: string, waypoints: string[] = []): Promise<RouteEstimate> => {
   try {
     const hasWaypoints = waypoints.length > 0;
-    const stopsString = hasWaypoints ? ` passing through [${waypoints.join(', ')}] ` : ' ';
+    const stopsString = hasWaypoints ? ` passing through these stops in order: [${waypoints.join(', ')}] ` : ' ';
     
     console.log(`Estimating route: ${origin} ->${stopsString}-> ${destination}...`);
     
-    const prompt = `Calculate the total estimated driving distance (in kilometers) and duration (in minutes) for a trip starting at "${origin}",${stopsString}and ending at "${destination}". Consider the most efficient driving route visiting these stops in order.`;
+    const prompt = `You are a logistics expert. Calculate the total estimated road distance (in kilometers) and the typical driving duration (in minutes) for a delivery trip.
+    Route details:
+    - Start: "${origin}"
+    - Stops: ${hasWaypoints ? waypoints.join(', ') : 'None'}
+    - End: "${destination}"
+    
+    Return ONLY a JSON object with "distanceKm" and "durationMins". Be as accurate as possible for the region of the addresses. If multiple routes exist, provide the most standard one.`;
 
-    // Fix: Using gemini-3-flash-preview for basic text task
+    // Using gemini-3-flash-preview for efficiency and reliability in JSON tasks
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -31,39 +37,39 @@ export const estimateRoute = async (origin: string, destination: string, waypoin
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            distanceKm: { type: Type.NUMBER, description: "The total distance in kilometers." },
-            durationMins: { type: Type.NUMBER, description: "The total duration in minutes." }
+            distanceKm: { type: Type.NUMBER, description: "Total distance in kilometers. Use decimal numbers if needed." },
+            durationMins: { type: Type.NUMBER, description: "Total duration in minutes as an integer." }
           },
           required: ["distanceKm", "durationMins"]
         }
       }
     });
 
-    // Fix: Access .text property directly (not a method)
+    // Access .text property directly (as per guidelines)
     const text = response.text;
-    if (text) {
-      // Sanitize response: remove Markdown code blocks if present
-      let cleanJson = text.trim();
-      if (cleanJson.startsWith('```json')) {
-        cleanJson = cleanJson.replace(/^```json/, '').replace(/```$/, '');
-      } else if (cleanJson.startsWith('```')) {
-        cleanJson = cleanJson.replace(/^```/, '').replace(/```$/, '');
-      }
-
-      const data = JSON.parse(cleanJson);
-      
-      console.log("Gemini Estimate Success:", data);
-
-      return {
-        distanceKm: Number(data.distanceKm) || 0,
-        durationMins: Number(data.durationMins) || 0
-      };
+    if (!text) {
+      throw new Error("Resposta vazia da IA.");
     }
 
-    throw new Error("No text content in AI response");
+    let cleanJson = text.trim();
+    // Safety check for common markdown wrappers
+    if (cleanJson.startsWith('```json')) {
+      cleanJson = cleanJson.replace(/^```json/, '').replace(/```$/, '');
+    } else if (cleanJson.startsWith('```')) {
+      cleanJson = cleanJson.replace(/^```/, '').replace(/```$/, '');
+    }
+
+    const data = JSON.parse(cleanJson.trim());
+    
+    console.log("Gemini Estimate Success:", data);
+
+    return {
+      distanceKm: parseFloat(data.distanceKm) || 0,
+      durationMins: parseInt(data.durationMins) || 0
+    };
+
   } catch (error: any) {
     console.error("Gemini Route Estimation Failed:", error);
-    // Return a user-friendly error message
-    throw new Error(error.message || "Falha ao calcular rota.");
+    throw new Error(error.message || "Erro ao processar estimativa com IA.");
   }
 };

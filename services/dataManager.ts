@@ -18,20 +18,37 @@ const INITIAL_USERS: User[] = [
 ];
 
 async function executeInternal<T>(supabaseCall: Promise<{ data: T | null, error: any }>, storageKey: string): Promise<T> {
+  let cloudData: T | null = null;
+  let hasError = false;
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabaseCall;
       if (error) {
         console.error(`Erro no Supabase (${storageKey}):`, error);
-        throw error;
+        hasError = true;
+      } else {
+        cloudData = data as T;
+        // Sync local storage with cloud data upon successful fetch
+        if (cloudData && Array.isArray(cloudData)) {
+            localStorage.setItem(storageKey, JSON.stringify(cloudData));
+        }
       }
-      return data as T;
     } catch (err) {
-      console.warn(`Falha na nuvem para ${storageKey}, buscando local:`, err);
+      console.warn(`Falha na conexão de rede para ${storageKey}, buscando local:`, err);
+      hasError = true;
     }
   }
+
+  // If we have cloud data, return it. Otherwise, fallback to local.
+  if (cloudData !== null && !hasError) {
+      return cloudData;
+  }
+
   const local = localStorage.getItem(storageKey);
-  return (local ? JSON.parse(local) : []) as unknown as T;
+  const parsedLocal = (local ? JSON.parse(local) : []) as unknown as T;
+  console.debug(`[DataManager] Fetching ${storageKey} from local storage. Found ${Array.isArray(parsedLocal) ? parsedLocal.length : 'N/A'} items.`);
+  return parsedLocal;
 }
 
 export const DataManager = {
@@ -92,6 +109,7 @@ export const DataManager = {
   },
 
   async fetchAllData() {
+    console.debug("[DataManager] Starting full data sync...");
     const requests = await executeInternal<TransportRequest[]>(
         (supabase ? supabase.from('requests').select('*').order('createdAt', { ascending: false }) : Promise.resolve({data: null, error: null})) as any,
         STORAGE_KEYS.REQUESTS
@@ -123,16 +141,22 @@ export const DataManager = {
   },
 
   async add(table: string, storageKey: string, item: any) {
+    console.debug(`[DataManager] Adding item to ${table}:`, item);
+    let cloudSuccess = false;
     try {
       if (this.isOnline && supabase) {
         const { error } = await supabase.from(table).insert([item]);
         if (error) throw error;
+        cloudSuccess = true;
       }
     } catch (err) {
-      console.error(`Erro ao salvar na nuvem (${table}):`, err);
+      console.error(`Erro ao salvar na nuvem (${table}). O item será mantido localmente:`, err);
     }
+    
+    // Always update local storage as a reliable fallback/cache
     const current = JSON.parse(localStorage.getItem(storageKey) || '[]');
     localStorage.setItem(storageKey, JSON.stringify([item, ...current]));
+    return cloudSuccess;
   },
 
   async update(table: string, storageKey: string, item: any, idField: string = 'id') {

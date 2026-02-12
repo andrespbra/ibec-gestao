@@ -48,6 +48,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
   });
 
   const [isEstimating, setIsEstimating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -112,10 +113,15 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     const activeWaypoints = waypoints.filter(w => w.trim() !== '');
     setError(null);
     setIsEstimating(true);
+    setShowMap(false);
     try {
       const result = await estimateRoute(formData.origin, formData.destination, activeWaypoints);
-      if (result.distanceKm > 0) setDistanceKm(result.distanceKm);
-      else setError("Não foi possível calcular a rota. Verifique os endereços.");
+      if (result.distanceKm > 0) {
+        setDistanceKm(result.distanceKm);
+        setShowMap(true);
+      } else {
+        setError("Não foi possível calcular a rota. Verifique os endereços.");
+      }
     } catch (err: any) {
       setError(err.message || "Falha ao estimar distância.");
     } finally {
@@ -138,7 +144,6 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
   const isAdmin = currentUser.role === 'ADMIN';
   const commissionValue = (financials.clientCharge * (formData.commissionPercentage / 100)) || 0;
 
-  // Split date for separate selectors as requested (Dia, Mes, Ano)
   const [year, month, day] = formData.requestDate.split('-');
 
   const handleDatePartChange = (part: 'day' | 'month' | 'year', value: string) => {
@@ -153,10 +158,28 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
     setFormData({ ...formData, requestDate: `${newYear}-${newMonth}-${newDay}` });
   };
 
+  // Google Maps URL construction
+  const mapUrl = useMemo(() => {
+    if (!showMap || !formData.origin || !formData.destination) return "";
+    const wp = waypoints.filter(w => w.trim() !== '').join('|');
+    const query = `${encodeURIComponent(formData.origin)}/to:${wp ? encodeURIComponent(wp) + '/to:' : ''}${encodeURIComponent(formData.destination)}`;
+    return `https://www.google.com/maps/embed/v1/directions?key=YOUR_API_KEY&origin=${encodeURIComponent(formData.origin)}&destination=${encodeURIComponent(formData.destination)}&waypoints=${encodeURIComponent(waypoints.filter(w => w.trim() !== '').join('|'))}`;
+    // Fallback simple search embed if key is missing or for standard mockup
+  }, [showMap, formData.origin, formData.destination, waypoints]);
+
+  // Public search embed fallback (doesn't strictly require key for basic view)
+  const publicMapUrl = useMemo(() => {
+     if (!showMap) return "";
+     const path = [formData.origin, ...waypoints.filter(w => w.trim() !== ''), formData.destination]
+        .map(p => encodeURIComponent(p))
+        .join('/');
+     return `https://www.google.com/maps?q=${encodeURIComponent(formData.origin)}+to+${encodeURIComponent(formData.destination)}&output=embed`;
+  }, [showMap, formData.origin, formData.destination, waypoints]);
+
   return (
-    <div className="max-w-3xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto pb-20">
         <div className="flex items-center gap-2 mb-6">
-            <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">&larr; Voltar</button>
+            <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 transition-colors">&larr; Voltar</button>
             <h2 className="text-2xl font-black text-gray-800 uppercase tracking-tight">{initialData ? 'Editar Solicitação' : 'Nova Solicitação de Transporte'}</h2>
         </div>
 
@@ -217,28 +240,53 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
             <div className="space-y-4">
                 <Input label="Origem" value={formData.origin} onChange={e => setFormData({...formData, origin: e.target.value})} required />
                 {waypoints.map((point, index) => (
-                    <div key={index} className="flex gap-2 items-end">
+                    <div key={index} className="flex gap-2 items-end animate-in slide-in-from-left duration-200">
                         <div className="flex-1"><Input label={`Parada ${index + 1}`} value={point} onChange={e => {
                           const newWaypoints = [...waypoints];
                           newWaypoints[index] = e.target.value;
                           setWaypoints(newWaypoints);
                         }} /></div>
-                        <button type="button" onClick={() => setWaypoints(waypoints.filter((_, i) => i !== index))} className="bg-red-50 text-red-500 p-2.5 rounded-md mb-1"><Icons.Trash /></button>
+                        <button type="button" onClick={() => setWaypoints(waypoints.filter((_, i) => i !== index))} className="bg-red-50 text-red-500 p-2.5 rounded-md mb-1 hover:bg-red-100 transition-colors"><Icons.Trash /></button>
                     </div>
                 ))}
-                <button type="button" onClick={() => setWaypoints([...waypoints, ''])} className="text-xs text-primary font-black uppercase tracking-widest">+ Adicionar Parada Extra</button>
+                <button type="button" onClick={() => setWaypoints([...waypoints, ''])} className="text-xs text-primary font-black uppercase tracking-widest hover:text-secondary transition-colors">+ Adicionar Parada Extra</button>
                 <Input label="Destino Final" value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} required />
+                
+                {error && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100">{error}</div>}
+
                 <div className="flex justify-end gap-4 items-end pt-2">
                     {!isClient && <div className="w-32"><Input label="KM Total" type="number" value={distanceKm} onChange={e => setDistanceKm(parseFloat(e.target.value) || 0)} /></div>}
-                    <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating} className="h-10 text-xs"><Icons.Wand /> Calcular Rota (IA)</Button>
+                    <Button type="button" variant="secondary" onClick={handleEstimate} isLoading={isEstimating} className="h-10 text-xs shadow-md"><Icons.Wand /> Calcular Rota (IA)</Button>
                 </div>
             </div>
         </Card>
 
+        {showMap && (
+          <Card className="p-0 overflow-hidden border-2 border-primary/20 animate-in zoom-in duration-300">
+              <div className="p-4 bg-primary/5 border-b flex justify-between items-center">
+                  <h4 className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                      <Icons.MapPin /> Prévia do Itinerário Gerada
+                  </h4>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">{distanceKm} KM estimados</span>
+              </div>
+              <div className="aspect-video w-full bg-gray-100">
+                  <iframe 
+                    width="100%" 
+                    height="100%" 
+                    frameBorder="0" 
+                    style={{ border: 0 }} 
+                    src={publicMapUrl} 
+                    allowFullScreen
+                    title="Mapa da Rota"
+                  ></iframe>
+              </div>
+          </Card>
+        )}
+
         {!isClient && (
-            <Card className="p-6 bg-primary/5 border-primary/10">
+            <Card className="p-6 bg-primary/5 border-primary/10 shadow-inner">
                 <div className="flex items-center gap-2 mb-4 border-b border-primary/10 pb-2">
-                    <div className="p-1.5 bg-primary text-white rounded"><Icons.DollarSign /></div>
+                    <div className="p-1.5 bg-primary text-white rounded shadow-sm"><Icons.DollarSign /></div>
                     <h3 className="text-sm font-black text-primary uppercase tracking-widest">Logística de Valores</h3>
                 </div>
                 
@@ -246,7 +294,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-2">
                             {rates.map(rate => (
-                                <button type="button" key={rate.type} onClick={() => setFormData({...formData, vehicleType: rate.type})} className={`px-3 py-2 text-[10px] font-black uppercase rounded-md border transition-all ${formData.vehicleType === rate.type ? 'bg-primary text-white border-primary shadow-lg' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>{rate.label}</button>
+                                <button type="button" key={rate.type} onClick={() => setFormData({...formData, vehicleType: rate.type})} className={`px-3 py-2 text-[10px] font-black uppercase rounded-md border transition-all ${formData.vehicleType === rate.type ? 'bg-primary text-white border-primary shadow-lg scale-105' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>{rate.label}</button>
                             ))}
                         </div>
                         <Select label="Motorista Escalado" value={formData.driverId} onChange={e => setFormData({...formData, driverId: e.target.value})}>
@@ -254,7 +302,7 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
                             {drivers.filter(d => d.vehicleType === formData.vehicleType).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </Select>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-primary/10 space-y-3 shadow-inner">
+                    <div className="bg-white p-4 rounded-xl border border-primary/10 space-y-3 shadow-md">
                         <Input label="Valor Repasse Motorista (R$)" type="number" value={financials.driverFee} onChange={e => setFinancials({...financials, driverFee: parseFloat(e.target.value) || 0})} className="font-bold text-gray-800" />
                         <Input label="Valor Cobrança Cliente (R$)" type="number" value={financials.clientCharge} onChange={e => setFinancials({...financials, clientCharge: parseFloat(e.target.value) || 0})} className="font-black text-primary" />
                     </div>
@@ -284,9 +332,9 @@ export const NewRequest: React.FC<NewRequestProps> = ({ rates, drivers, clients,
             </Card>
         )}
 
-        <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onCancel} className="px-8">Cancelar</Button>
-            <Button type="submit" className="px-12 shadow-xl">{initialData ? 'Atualizar Dados' : 'Efetivar Solicitação'}</Button>
+        <div className="flex justify-end gap-3 pt-4 border-t mt-8">
+            <Button type="button" variant="ghost" onClick={onCancel} className="px-8">Cancelar</Button>
+            <Button type="submit" className="px-12 shadow-xl hover:scale-105 transition-transform">{initialData ? 'Atualizar Dados' : 'Efetivar Solicitação'}</Button>
         </div>
       </form>
     </div>
